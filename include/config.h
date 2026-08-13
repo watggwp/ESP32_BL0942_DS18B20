@@ -22,6 +22,19 @@
 #define DS18B20_COUNT      9
 #define DS18B20_RESOLUTION 12   // bits (9-12); 12 = 750ms conversion, 0.0625C steps
 
+// Physical mounting pattern, used by the dashboard's thermal map to place each
+// slot. The probes run in a serpentine so the cable never has to jump back
+// across the array -- every other row is mounted right-to-left:
+//
+//     serpentine (true)        row-major (false)
+//       1  2  3                  1  2  3
+//       6  5  4                  4  5  6
+//       7  8  9                  7  8  9
+//
+// This describes where the sensors ARE, not what order they report in -- slot
+// order itself is set on /settings.
+#define DS18B20_LAYOUT_SERPENTINE true
+
 // ---- Status LED -------------------------------------------------------------
 #define STATUS_LED_PIN     2
 #define STATUS_LED_ACTIVE_HIGH true

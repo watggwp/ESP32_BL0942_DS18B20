@@ -232,6 +232,7 @@ static void sendSensorList(AsyncWebServerRequest *request) {
     doc["max"] = DS18B20_COUNT;
     doc["tmin"] = TEMP_COLOR_MIN_C;   // ends of the thermal ramp, from config.h
     doc["tmax"] = TEMP_COLOR_MAX_C;
+    doc["serp"] = DS18B20_LAYOUT_SERPENTINE;   // mounting pattern for the thermal map
     JsonArray arr = doc["sensors"].to<JsonArray>();
     for (uint8_t i = 0; i < slotCount; i++) {
         char hex[17];

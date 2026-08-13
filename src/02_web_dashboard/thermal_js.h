@@ -64,6 +64,19 @@ function thermalCss(c, alpha) {
                              : 'rgba(' + r + ',' + g + ',' + b + ',' + alpha + ')';
 }
 
+// CSS gradient built from the same stops, for the scale legend beside a chart.
+// A semantic-heat ramp is only readable with a scale to read it against, and
+// generating that scale from THERMAL_STOPS keeps it honest -- a hand-written
+// gradient would quietly stop matching the lines the first time a stop moves.
+function thermalGradientCss() {
+  var parts = [];
+  for (var i = 0; i < THERMAL_STOPS.length; i++) {
+    var s = THERMAL_STOPS[i];
+    parts.push(thermalCss([s[1], s[2], s[3]]) + ' ' + Math.round(s[0] * 100) + '%');
+  }
+  return 'linear-gradient(90deg,' + parts.join(',') + ')';
+}
+
 // Everything a card needs for one reading: t is the 0..1 position in the range.
 function thermalPaint(t) {
   t = thermalClamp(t);
