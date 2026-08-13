@@ -1,8 +1,47 @@
 #pragma once
 // Self-contained dashboard page: no CDN, no external fonts/scripts (the ESP32
 // has no guarantee of internet access). Pure inline CSS + vanilla JS, updated
-// live over Server-Sent Events (GET /events). Canvas is used for the power
-// gauge and the rolling power sparkline; everything else is plain DOM.
+// live over Server-Sent Events (GET /events). The only shared asset is
+// /thermal.js, served by this same firmware.
+//
+// NOTE ON SIZE: everything between the R"HTMLPAGE( ... )HTMLPAGE" delimiters is
+// stored in flash byte for byte and shipped to the browser. Comments in there
+// cost real flash, unlike these C comments, which the compiler discards. So the
+// design rationale lives up here and the in-page comments stay terse.
+//
+// Cards on the page:
+//   Active Power gauge, stat tiles, power sparkline (last 90 s)
+//   Accumulated energy + reset
+//   Thermal Map    -- see below
+//   DS18B20 Temperatures -- 3x3 cards in mounting order
+//   BL0942 calibration
+//
+// SERPENTINE LAYOUT. The nine probes are mounted in a serpentine so the cable
+// never has to jump back across the array: rows 0 and 2 run left to right, row 1
+// runs right to left.
+//
+//     1  2  3
+//     6  5  4      <- reversed
+//     7  8  9
+//
+// Both the thermal map and the temperature cards are laid out in that order, so
+// a card's position on screen is the probe's position in the real world. serp()
+// does the mapping and is its own inverse. Get it wrong and half the display
+// mirrors, pointing at the wrong end of the machine while still looking normal.
+//
+// THERMAL MAP. A continuous field interpolated from the nine probes by inverse
+// distance weighting (Shepard, power 2). The property that matters: the result is
+// a weighted average of real readings, so it can never fabricate a hotspot hotter
+// than the hottest probe. It is still an estimate between the probes, and the
+// caption on the card says so. The field is drawn as a wash so the nine measured
+// circles stay the loud thing on the card.
+//
+// COLOUR. One ramp everywhere (thermal.js), encoding TEMPERATURE, never sensor
+// identity -- nine mutually distinguishable hues do not exist, so identity comes
+// from slot numbers, names and hover instead. Because the ramp is semantic heat,
+// the card carries a gradient scale legend to read it against. Its ends come from
+// TEMP_COLOR_MIN_C / TEMP_COLOR_MAX_C in config.h via /api/sensors, so the colour
+// and the little bar under each card are scaled from one number, never two.
 
 static const char DASHBOARD_HTML[] PROGMEM = R"HTMLPAGE(<!doctype html>
 <html lang="en">
@@ -33,6 +72,7 @@ h1 span{color:var(--accent)}
 .card{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--border);
   border-radius:var(--radius);padding:18px;position:relative;overflow:hidden}
 .card h2{font-size:.78rem;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);margin:0 0 10px 0;font-weight:600}
+.card h2 .sub{text-transform:none;letter-spacing:0;font-weight:400;color:var(--muted);margin-left:8px}
 .cfglink{float:right;color:var(--muted);text-decoration:none;border-bottom:1px dotted var(--border);
   text-transform:none;letter-spacing:0;font-weight:400}
 .cfglink:hover{color:var(--accent);border-bottom-color:var(--accent)}
@@ -58,53 +98,35 @@ h1 span{color:var(--accent)}
   border-radius:10px;cursor:pointer;font-size:.85rem;transition:.15s}
 .btn:hover{border-color:var(--accent);color:var(--accent)}
 
-/* Temperature history: all sensors on one time/temperature plot. Colour encodes
-   temperature (same ramp as the cards), never sensor identity -- nine
-   distinguishable hues do not exist. Identity comes from the legend and hover. */
-.thermo{grid-column:span 12}
-.thermo h2 .sub{text-transform:none;letter-spacing:0;font-weight:400;color:var(--muted);margin-left:8px}
-.thermo-wrap{display:grid;grid-template-columns:1fr 200px;gap:16px;margin-top:2px}
-.thermo-plot{position:relative;min-width:0}
-/* pan-y, not none: dragging sideways scrubs the crosshair, but the page must
-   still scroll vertically when a finger starts on the chart. */
-.thermo-plot canvas{width:100%;height:230px;display:block;cursor:crosshair;touch-action:pan-y}
+.heatmap{grid-column:span 12}
+.hm-wrap{display:flex;flex-direction:column;align-items:center;margin-top:2px}
+.hm-plot{position:relative;width:100%;max-width:560px}
+/* pan-y, not none: the page must still scroll when a finger starts on the map */
+.hm-plot canvas{width:100%;aspect-ratio:4/3;display:block;border-radius:12px;
+  cursor:crosshair;touch-action:pan-y}
+.hm-note{color:var(--muted);font-size:.75rem;line-height:1.6;margin-top:12px;max-width:560px}
+.hm-note b{color:var(--text);font-weight:600}
 .scale{display:flex;align-items:center;gap:8px;margin-top:10px;color:var(--muted);font-size:.68rem;
   font-variant-numeric:tabular-nums}
 .scalebar{flex:1;height:6px;border-radius:3px;display:block}
-.thermo-legend{display:flex;flex-direction:column;gap:1px;min-width:0}
-.lrow{display:grid;grid-template-columns:14px 1fr auto;gap:8px;align-items:center;padding:5px 7px;
-  border-radius:8px;border:1px solid transparent;transition:background .12s,border-color .12s,opacity .12s}
-.lrow:hover,.lrow.on{background:var(--bg);border-color:var(--border)}
-.lrow.dim{opacity:.4}
-.lkey{height:2px;border-radius:1px;display:block;background:var(--muted)}
-.lname{color:var(--muted);font-size:.74rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.lval{color:var(--text);font-size:.78rem;font-weight:600;font-variant-numeric:tabular-nums}
+
 .ttip{position:absolute;pointer-events:none;background:var(--panel2);border:1px solid var(--border);
   border-radius:10px;padding:9px 11px;font-size:.72rem;opacity:0;transition:opacity .12s;
   box-shadow:0 8px 26px rgba(0,0,0,.5);z-index:5;min-width:132px;left:0;top:0}
 .ttip.show{opacity:1}
 .ttip .tth{color:var(--muted);font-size:.66rem;margin-bottom:6px;font-variant-numeric:tabular-nums}
-.ttip .ttr{display:grid;grid-template-columns:12px auto 1fr;gap:8px;align-items:center;margin-top:3px}
+.ttip .ttr{display:grid;grid-template-columns:12px auto 1fr;gap:8px;align-items:center}
+.ttip .ttk{height:2px;border-radius:1px;display:block;background:var(--muted)}
 .ttip .ttv{color:var(--text);font-weight:700;font-variant-numeric:tabular-nums;text-align:right}
 .ttip .ttn{color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-
-/* Thermal map: a continuous field interpolated from the nine probes, laid out in
-   the 3x3 pattern they are physically mounted in (slot 1 top-left, 9 bottom-right
-   -- the order set on /settings). */
-.heatmap{grid-column:span 12}
-.heatmap h2 .sub{text-transform:none;letter-spacing:0;font-weight:400;color:var(--muted);margin-left:8px}
-.hm-wrap{display:flex;flex-direction:column;align-items:center;margin-top:2px}
-.hm-plot{position:relative;width:100%;max-width:560px}
-.hm-plot canvas{width:100%;aspect-ratio:4/3;display:block;border-radius:12px;
-  cursor:crosshair;touch-action:pan-y}
-.hm-note{color:var(--muted);font-size:.75rem;line-height:1.6;margin-top:12px;max-width:560px}
-.hm-note b{color:var(--text);font-weight:600}
 
 .temps{grid-column:span 12}
 .temps .row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:6px}
 .tcard{background:var(--panel2);border:1px solid var(--border);border-radius:12px;padding:12px;text-align:center;
   transition:background-image .8s,border-color .8s,box-shadow .8s}
 .tcard .tv{font-size:1.25rem;font-weight:700;transition:color .8s}
+/* overflow-wrap: Thai has no spaces, so a name cannot line-break on its own and
+   would run straight out of a fixed-width grid cell */
 .tcard .tl{color:var(--muted);font-size:.72rem;margin-top:2px;text-transform:uppercase;letter-spacing:.5px;
   overflow-wrap:anywhere}
 .tbar{height:5px;border-radius:3px;background:#232b3d;margin-top:8px;overflow:hidden}
@@ -124,12 +146,10 @@ h1 span{color:var(--accent)}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
 footer{margin-top:22px;color:var(--muted);font-size:.75rem;text-align:center}
-@media(max-width:820px){.hero{grid-column:span 12}.stats{grid-column:span 12;grid-template-columns:repeat(3,1fr)}
-  .thermo-wrap{grid-template-columns:1fr}
-  .thermo-legend{display:grid;grid-template-columns:repeat(2,1fr);gap:2px}}
+@media(max-width:820px){.hero{grid-column:span 12}.stats{grid-column:span 12;grid-template-columns:repeat(3,1fr)}}
 @media(max-width:520px){.stats{grid-template-columns:repeat(2,1fr)}}
 /* Keep the temperature grid at 3 columns on a phone by tightening the cards
-   rather than reflowing them -- 3x3 is the layout, at every width. */
+   rather than reflowing them -- the 3x3 IS the mounting layout, at every width */
 @media(max-width:460px){
   .temps .row{gap:8px}
   .tcard{padding:10px 6px}
@@ -162,24 +182,8 @@ footer{margin-top:22px;color:var(--muted);font-size:.75rem;text-align:center}
   </div>
 
   <div class="card spark">
-    <h2>Power History <span style="text-transform:none;letter-spacing:0;font-weight:400">(last 90 s)</span></h2>
+    <h2>Power History <span class="sub">last 90 s</span></h2>
     <canvas id="sparkline"></canvas>
-  </div>
-
-  <div class="card thermo">
-    <h2>Temperature History <span class="sub" id="thermoSub"></span></h2>
-    <div class="thermo-wrap">
-      <div class="thermo-plot">
-        <canvas id="thermo"></canvas>
-        <div class="ttip" id="thermoTip"></div>
-        <div class="scale">
-          <span id="scaleMin">&mdash;</span>
-          <i class="scalebar" id="scaleBar"></i>
-          <span id="scaleMax">&mdash;</span>
-        </div>
-      </div>
-      <div class="thermo-legend" id="thermoLegend"></div>
-    </div>
   </div>
 
   <div class="card energy">
@@ -188,16 +192,16 @@ footer{margin-top:22px;color:var(--muted);font-size:.75rem;text-align:center}
   </div>
 
   <div class="card heatmap">
-    <h2>Thermal Map <span class="sub" id="hmLayout"></span>
+    <h2>Thermal Map <span class="sub">serpentine &middot; 1 2 3 / 6 5 4 / 7 8 9</span>
       <a class="cfglink" href="/settings">configure</a></h2>
     <div class="hm-wrap">
       <div class="hm-plot">
         <canvas id="heatmap"></canvas>
         <div class="ttip" id="hmTip"></div>
         <div class="scale">
-          <span id="hmScaleMin">&mdash;</span>
-          <i class="scalebar" id="hmScaleBar"></i>
-          <span id="hmScaleMax">&mdash;</span>
+          <span id="scaleMin">&mdash;</span>
+          <i class="scalebar" id="scaleBar"></i>
+          <span id="scaleMax">&mdash;</span>
         </div>
       </div>
       <div class="hm-note">The nine circles are measured. Everything between them is
@@ -208,7 +212,8 @@ footer{margin-top:22px;color:var(--muted);font-size:.75rem;text-align:center}
   </div>
 
   <div class="card temps">
-    <h2>DS18B20 Temperatures <a class="cfglink" href="/settings">configure</a></h2>
+    <h2>DS18B20 Temperatures <span class="sub">in mounting order</span>
+      <a class="cfglink" href="/settings">configure</a></h2>
     <div class="row" id="tempRow"></div>
   </div>
 
@@ -237,35 +242,47 @@ const spark = $('sparkline').getContext('2d');
 let history = [];
 const HISTORY_MAX = 90;
 
-// Sensor names and the thermal range live in NVS/config.h, not in the 1 Hz
-// stream. The stream carries a config version instead; when it moves, someone
-// edited /settings and we refetch.
 let sensorNames = [], labelsDirty = false, cfgVersion = -1, lastTemps = null;
 let tMin = 10, tMax = 80;   // overwritten by /api/sensors
 
-function loadSensorConfig(){
-  fetch('/api/sensors').then(r=>r.json()).then(d=>{
-    sensorNames = (d.sensors||[]).map(s=>s.name||'');
-    if(typeof d.tmin === 'number') tMin = d.tmin;
-    if(typeof d.tmax === 'number') tMax = d.tmax;
-    if(typeof d.serp === 'boolean') hmSerpentine = d.serp;
-    labelsDirty = true;
-    legendSig = '';   // names changed -- force the legend to rebuild its labels
-    renderThermoScale();
-    if(lastTemps){
-      renderTemps(lastTemps);
-      renderLegend(lastTemps.length);
-      updateLegendValues(lastTemps);
-      drawThermo();
-      drawHeatmap();
-    }
-  }).catch(()=>{});
+let CHART_INK, CHART_SURFACE;
+(function readTokens(){
+  const cs = getComputedStyle(document.documentElement);
+  const pick = (n, f) => cs.getPropertyValue(n).trim() || f;
+  CHART_INK     = pick('--muted', '#8a93a6');
+  CHART_SURFACE = pick('--panel', '#121826');
+})();
+
+// Serpentine: row 1 runs right-to-left, so slot 4 is the RIGHT of the middle row
+// and slot 6 the left. Its own inverse, so it maps slot->position and back.
+function serp(i){
+  const row = Math.floor(i / 3);
+  return row * 3 + (row % 2 ? 2 - (i % 3) : i % 3);
 }
 
 function toast(msg){
   const t = $('toast'); t.textContent = msg; t.classList.add('show');
   clearTimeout(toast._h); toast._h = setTimeout(()=>t.classList.remove('show'), 2200);
 }
+
+function loadSensorConfig(){
+  fetch('/api/sensors').then(r=>r.json()).then(d=>{
+    sensorNames = (d.sensors||[]).map(s=>s.name||'');
+    if(typeof d.tmin === 'number') tMin = d.tmin;
+    if(typeof d.tmax === 'number') tMax = d.tmax;
+    labelsDirty = true;
+    renderScale();
+    if(lastTemps){ renderTemps(lastTemps); drawHeatmap(); }
+  }).catch(()=>{});
+}
+
+function renderScale(){
+  $('scaleBar').style.background = thermalGradientCss();
+  $('scaleMin').textContent = tMin + '°C';
+  $('scaleMax').textContent = tMax + '°C';
+}
+
+function sensorLabel(i){ return sensorNames[i] || ('Sensor ' + (i + 1)); }
 
 function drawGauge(watts, maxWatts){
   const c = $('gauge'); const w = c.width, h = c.height;
@@ -322,19 +339,23 @@ function drawSpark(){
 
 function renderTemps(temps){
   const row = $('tempRow');
+  // Cards sit in mounting order, so a card's place on screen is the probe's place
+  // on the machine. Only a full set of nine forms the serpentine 3x3.
+  const order = temps.length === 9 ? [0,1,2,3,4,5,6,7,8].map(serp) : temps.map((_,i)=>i);
   if(row.children.length !== temps.length || labelsDirty){
     labelsDirty = false;
-    row.innerHTML = temps.map((_,i)=>`
-      <div class="tcard" id="tc${i}">
-        <div class="tv" id="tv${i}">&mdash;</div>
-        <div class="tl" id="tn${i}"></div>
-        <div class="tbar"><i id="ti${i}"></i></div>
+    row.innerHTML = order.map(s=>`
+      <div class="tcard" id="tc${s}">
+        <div class="tv" id="tv${s}">&mdash;</div>
+        <div class="tl" id="tn${s}"></div>
+        <div class="tbar"><i id="ti${s}"></i></div>
       </div>`).join('');
     // textContent, not markup: sensor names are whatever the user typed
-    temps.forEach((_,i)=>{ $('tn'+i).textContent = sensorNames[i] || ('Sensor ' + i); });
+    order.forEach(s=>{ $('tn'+s).textContent = sensorLabel(s); });
   }
   temps.forEach((c,i)=>{
     const card = $('tc'+i), val = $('tv'+i), bar = $('ti'+i);
+    if(!card) return;
     if(c===null){
       card.classList.add('off');
       card.style.backgroundImage = ''; card.style.borderColor = ''; card.style.boxShadow = '';
@@ -345,9 +366,7 @@ function renderTemps(temps){
     }
     card.classList.remove('off');
     val.textContent = c.toFixed(2)+'°C';
-
-    // One normalised position drives the colour AND the bar length, so the two
-    // can never disagree the way they did when each had its own hardcoded range.
+    // One normalised position drives the colour AND the bar length
     const p = thermalPaint((c - tMin) / ((tMax - tMin) || 1));
     val.style.color = p.text;
     card.style.backgroundImage = p.tint;
@@ -358,282 +377,8 @@ function renderTemps(temps){
   });
 }
 
-// ---------------------------------------------------------------------------
-// Temperature history plot
-//
-// Nine series on one pair of axes. Hue carries TEMPERATURE, not sensor identity:
-// nine mutually distinguishable hues do not exist (a 9th is indistinguishable
-// from an earlier one under colour-blind vision), so identity is carried by the
-// legend and by hover emphasis instead, and hue is free to mean the same thing it
-// means on the cards. That makes it a semantic-heat scale, which obliges the
-// gradient scale legend underneath.
-// ---------------------------------------------------------------------------
-const TEMP_HISTORY_MAX = 300;   // one sample/second -> 5 minutes
-let tempHistory = [], focusSlot = null, hoverIdx = null, thermoGeo = null, legendSig = '';
-let CHART_GRID, CHART_INK, CHART_SURFACE;
-
-(function readChartTokens(){
-  const cs = getComputedStyle(document.documentElement);
-  const pick = (name, fallback) => cs.getPropertyValue(name).trim() || fallback;
-  CHART_GRID    = pick('--border', '#232b3d');
-  CHART_INK     = pick('--muted',  '#8a93a6');
-  CHART_SURFACE = pick('--panel',  '#121826');
-})();
-
-function pushTempHistory(temps){
-  if(tempHistory.length !== temps.length) tempHistory = temps.map(()=>[]);
-  temps.forEach((v,i)=>{
-    const a = tempHistory[i];
-    a.push(typeof v === 'number' ? v : null);
-    if(a.length > TEMP_HISTORY_MAX) a.shift();
-  });
-}
-
-function lastReading(a){
-  for(let k = a.length - 1; k >= 0; k--) if(typeof a[k] === 'number') return a[k];
-  return null;
-}
-
-function seriesColor(i){
-  const v = tempHistory[i] ? lastReading(tempHistory[i]) : null;
-  if(v === null) return CHART_INK;
-  return thermalPaint((v - tMin) / ((tMax - tMin) || 1)).vivid;
-}
-
-// Autoscale to the data, not to the colour range: nine probes sitting between 28
-// and 31 degrees would be a flat line on a 10-80 axis. The floor on the span
-// stops sensor noise from filling the plot and looking like an event.
-function thermoRange(){
-  let lo = Infinity, hi = -Infinity;
-  tempHistory.forEach(a=>a.forEach(v=>{
-    if(typeof v === 'number'){ if(v < lo) lo = v; if(v > hi) hi = v; }
-  }));
-  if(lo === Infinity) return [20, 30];
-  const span = Math.max(hi - lo, 4);
-  const mid = (lo + hi) / 2;
-  return [mid - span/2 - span*0.18, mid + span/2 + span*0.18];
-}
-
-function niceStep(span){
-  const raw = span / 4;
-  for(const s of [0.5,1,2,5,10,20,50]) if(raw <= s) return s;
-  return 100;
-}
-
-function drawThermo(){
-  const c = $('thermo');
-  const cssW = c.clientWidth || 600, cssH = 230, dpr = window.devicePixelRatio || 1;
-  c.width = cssW * dpr; c.height = cssH * dpr;
-  const g = c.getContext('2d');
-  g.setTransform(dpr, 0, 0, dpr, 0, 0);
-  g.clearRect(0, 0, cssW, cssH);
-
-  const padL = 44, padR = 14, padT = 10, padB = 24;
-  const plotW = cssW - padL - padR, plotH = cssH - padT - padB;
-  const n = tempHistory.length ? tempHistory[0].length : 0;
-  thermoGeo = {padL, plotW, plotH, padT, n};
-
-  if(n < 2){
-    g.fillStyle = CHART_INK; g.font = '12px sans-serif'; g.textAlign = 'center';
-    g.fillText('collecting…', cssW/2, cssH/2);
-    return;
-  }
-
-  const [lo, hi] = thermoRange();
-  const step = niceStep(hi - lo);
-  const X = i => padL + (i / (n - 1)) * plotW;
-  const Y = v => padT + plotH - ((v - lo) / (hi - lo)) * plotH;
-
-  // Grid and axes: solid hairlines one step off the surface, never dashed.
-  g.strokeStyle = CHART_GRID; g.lineWidth = 1;
-  g.fillStyle = CHART_INK;
-  g.font = '10px ui-monospace,SFMono-Regular,Consolas,monospace';
-  g.textAlign = 'right'; g.textBaseline = 'middle';
-  for(let v = Math.ceil(lo/step)*step; v <= hi; v += step){
-    const y = Math.round(Y(v)) + 0.5;
-    g.beginPath(); g.moveTo(padL, y); g.lineTo(padL + plotW, y); g.stroke();
-    g.fillText(v.toFixed(step < 1 ? 1 : 0) + '°', padL - 8, y);
-  }
-  g.textBaseline = 'top';
-  g.textAlign = 'left';  g.fillText('−' + (n-1) + 's', padL, padT + plotH + 8);
-  g.textAlign = 'right'; g.fillText('now', padL + plotW, padT + plotH + 8);
-
-  if(hoverIdx !== null && hoverIdx < n){
-    const x = Math.round(X(hoverIdx)) + 0.5;
-    g.strokeStyle = CHART_INK; g.lineWidth = 1;
-    g.beginPath(); g.moveTo(x, padT); g.lineTo(x, padT + plotH); g.stroke();
-  }
-
-  g.lineJoin = 'round'; g.lineCap = 'round';
-  const strokeSeries = a => {
-    g.beginPath();
-    let pen = false;
-    for(let k = 0; k < a.length; k++){
-      const v = a[k];
-      if(typeof v !== 'number'){ pen = false; continue; }   // gap, don't bridge it
-      const x = X(k), y = Y(v);
-      pen ? g.lineTo(x, y) : g.moveTo(x, y);
-      pen = true;
-    }
-    g.stroke();
-  };
-
-  tempHistory.forEach((a, i) => {
-    const lit = focusSlot === null || focusSlot === i;
-    const col = seriesColor(i);
-    if(lit){   // the glow: one wide low-alpha pass under the line
-      g.globalAlpha = 0.14; g.lineWidth = 7; g.strokeStyle = col; strokeSeries(a);
-    }
-    g.globalAlpha = lit ? 1 : 0.15;
-    g.lineWidth = 2; g.strokeStyle = col; strokeSeries(a);
-    g.globalAlpha = 1;
-  });
-
-  // Markers last so they sit above every line, each with a 2px surface ring.
-  const dot = (x, y, col) => {
-    g.beginPath(); g.arc(x, y, 4, 0, Math.PI*2);
-    g.fillStyle = col; g.fill();
-    g.lineWidth = 2; g.strokeStyle = CHART_SURFACE; g.stroke();
-  };
-  tempHistory.forEach((a, i) => {
-    if(focusSlot !== null && focusSlot !== i) return;
-    let k = a.length - 1;
-    while(k >= 0 && typeof a[k] !== 'number') k--;
-    if(k >= 0) dot(X(k), Y(a[k]), seriesColor(i));
-    if(hoverIdx !== null && typeof a[hoverIdx] === 'number'){
-      dot(X(hoverIdx), Y(a[hoverIdx]), seriesColor(i));
-    }
-  });
-}
-
-// The legend is also the table view: every current value is readable without
-// hovering anything, so the tooltip only ever enhances.
-function syncLegendFocus(){
-  const rows = $('thermoLegend').children;
-  for(let i = 0; i < rows.length; i++){
-    rows[i].classList.toggle('on',  focusSlot === i);
-    rows[i].classList.toggle('dim', focusSlot !== null && focusSlot !== i);
-  }
-}
-
-function renderLegend(count){
-  const box = $('thermoLegend');
-  const sig = count + '|' + sensorNames.slice(0, count).join('');
-  if(sig === legendSig) return;
-  legendSig = sig;
-  box.innerHTML = '';
-  for(let i = 0; i < count; i++){
-    const row = document.createElement('div');
-    row.className = 'lrow';
-    const key = document.createElement('i');  key.className = 'lkey';
-    const name = document.createElement('span'); name.className = 'lname';
-    name.textContent = sensorNames[i] || ('Sensor ' + i);   // user text, never innerHTML
-    const val = document.createElement('span'); val.className = 'lval'; val.textContent = '—';
-    row.append(key, name, val);
-    row.addEventListener('pointerenter', ()=>{ focusSlot = i; syncLegendFocus(); drawThermo(); });
-    row.addEventListener('pointerleave', ()=>{ focusSlot = null; syncLegendFocus(); drawThermo(); });
-    box.appendChild(row);
-  }
-}
-
-function updateLegendValues(temps){
-  const rows = $('thermoLegend').children;
-  temps.forEach((v,i)=>{
-    const row = rows[i]; if(!row) return;
-    row.children[0].style.background = seriesColor(i);
-    row.children[2].textContent = typeof v === 'number' ? v.toFixed(2) + '°C' : 'offline';
-  });
-}
-
-function hideThermoTip(){ $('thermoTip').classList.remove('show'); }
-
-function showThermoTip(px, py, idx){
-  const tip = $('thermoTip');
-  const rows = [];
-  tempHistory.forEach((a,i)=>{ if(typeof a[idx] === 'number') rows.push({i, v:a[idx]}); });
-  if(!rows.length){ hideThermoTip(); return; }
-  rows.sort((a,b)=>b.v - a.v);
-
-  tip.innerHTML = '';
-  const head = document.createElement('div');
-  head.className = 'tth';
-  const back = tempHistory[0].length - 1 - idx;
-  head.textContent = back === 0 ? 'now' : '−' + back + ' s';
-  tip.appendChild(head);
-  // Value leads, name follows: the reader already has the series and wants the number.
-  rows.forEach(r=>{
-    const row = document.createElement('div'); row.className = 'ttr';
-    const key = document.createElement('i'); key.className = 'lkey';
-    key.style.background = seriesColor(r.i);
-    const val = document.createElement('span'); val.className = 'ttv';
-    val.textContent = r.v.toFixed(2) + '°';
-    const nm = document.createElement('span'); nm.className = 'ttn';
-    nm.textContent = sensorNames[r.i] || ('Sensor ' + r.i);
-    row.append(key, val, nm);
-    tip.appendChild(row);
-  });
-
-  tip.classList.add('show');
-  const wrap = $('thermo').parentElement;
-  let left = px + 16, top = py - tip.offsetHeight - 12;
-  if(left + tip.offsetWidth > wrap.clientWidth) left = px - tip.offsetWidth - 16;
-  if(left < 0) left = 0;
-  if(top < 0) top = py + 16;
-  tip.style.left = left + 'px';
-  tip.style.top  = top + 'px';
-}
-
-(function bindThermoHover(){
-  const cv = $('thermo');
-  // The crosshair snaps to the nearest sample, so the reader aims at a moment in
-  // time rather than trying to land on a 2px line.
-  cv.addEventListener('pointermove', e=>{
-    if(!thermoGeo || thermoGeo.n < 2) return;
-    const r = cv.getBoundingClientRect();
-    const x = e.clientX - r.left, y = e.clientY - r.top;
-    let idx = Math.round(((x - thermoGeo.padL) / thermoGeo.plotW) * (thermoGeo.n - 1));
-    hoverIdx = Math.max(0, Math.min(thermoGeo.n - 1, idx));
-    showThermoTip(x, y, hoverIdx);
-    drawThermo();
-  });
-  cv.addEventListener('pointerleave', ()=>{ hoverIdx = null; hideThermoTip(); drawThermo(); });
-})();
-
-function renderThermoScale(){
-  $('hmLayout').textContent = hmSerpentine
-    ? 'mounted 3×3 serpentine · 1 2 3 / 6 5 4 / 7 8 9'
-    : 'mounted 3×3 · slot 1 top-left';
-  const grad = thermalGradientCss();
-  $('scaleBar').style.background = grad;
-  $('scaleMin').textContent = tMin + '°C';
-  $('scaleMax').textContent = tMax + '°C';
-  $('hmScaleBar').style.background = grad;
-  $('hmScaleMin').textContent = tMin + '°C';
-  $('hmScaleMax').textContent = tMax + '°C';
-}
-
-// ---------------------------------------------------------------------------
-// Thermal map
-//
-// Nine probes mounted in a 3x3 pattern. Slot order (set on /settings) IS the
-// layout: slot 1 top-left, 5 centre, 9 bottom-right -- so no coordinates need
-// storing anywhere. The field between them is inverse-distance weighted, which
-// has the property that matters here: the result is a weighted average of the
-// real readings, so it can never fabricate a hotspot hotter than the hottest
-// probe. It is still a guess, and the caption says so.
-// ---------------------------------------------------------------------------
-const HM_GW = 44, HM_GH = 33;   // field is computed coarse, then bilinearly upscaled
-let hmBuf = null, hmHover = null, hmPts = [], hmSerpentine = true;
-
-// Slot -> where that probe physically sits. In a serpentine run every other row
-// is mounted right-to-left, so slot 4 is the RIGHT of the middle row and slot 6
-// the left. Getting this backwards would mirror half the map and point at the
-// wrong end of the machine.
-function slotCell(i){
-  const row = Math.floor(i / 3);
-  const col = (hmSerpentine && row % 2 === 1) ? 2 - (i % 3) : (i % 3);
-  return { fx: (col + 0.5) / 3, fy: (row + 0.5) / 3 };
-}
+const HM_GW = 44, HM_GH = 33;   // field computed coarse, then bilinearly upscaled
+let hmBuf = null, hmHover = null, hmPts = [];
 
 function drawHeatmap(){
   const c = $('heatmap');
@@ -646,12 +391,15 @@ function drawHeatmap(){
   g.setTransform(dpr, 0, 0, dpr, 0, 0);
   g.clearRect(0, 0, cssW, cssH);
 
-  // Lattice position of every slot, whether or not it is reporting.
   const cells = [];
   for(let i = 0; i < 9; i++){
     const v = lastTemps ? lastTemps[i] : undefined;
-    const at = slotCell(i);
-    cells.push({ i, v: typeof v === 'number' ? v : null, fx: at.fx, fy: at.fy });
+    const pos = serp(i);
+    cells.push({
+      i, v: typeof v === 'number' ? v : null,
+      fx: ((pos % 3) + 0.5) / 3,
+      fy: (Math.floor(pos / 3) + 0.5) / 3
+    });
   }
   hmPts = cells;
   const live = cells.filter(p => p.v !== null);
@@ -679,14 +427,14 @@ function drawHeatmap(){
         const dx = fx - p.fx, dy = fy - p.fy;
         const d2 = dx*dx + dy*dy;
         if(d2 < 1e-6){ exact = p.v; break; }
-        const w = 1 / d2;                      // Shepard, power 2
+        const w = 1 / d2;
         num += w * p.v; den += w;
       }
       const v = exact !== null ? exact : num / den;
       const col = thermalRamp((v - tMin) / ((tMax - tMin) || 1));
       const o = (y * HM_GW + x) * 4;
       img.data[o] = col[0]; img.data[o+1] = col[1]; img.data[o+2] = col[2];
-      img.data[o+3] = 168;   // a wash, so the measured circles stay the loud thing
+      img.data[o+3] = 168;
     }
   }
   bg.putImageData(img, 0, 0);
@@ -698,7 +446,6 @@ function drawHeatmap(){
   g.textAlign = 'center';
   cells.forEach(p => {
     const cx = p.fx * cssW, cy = p.fy * cssH;
-    const focused = hmHover === p.i;
 
     if(p.v === null){                       // slot exists, sensor does not
       g.beginPath(); g.arc(cx, cy, r, 0, Math.PI*2);
@@ -708,15 +455,14 @@ function drawHeatmap(){
       g.fillText('—', cx, cy);
     } else {
       const rgb = thermalRamp((p.v - tMin) / ((tMax - tMin) || 1));
-      if(focused){
+      if(hmHover === p.i){
         g.beginPath(); g.arc(cx, cy, r + 6, 0, Math.PI*2);
         g.fillStyle = thermalCss(rgb, 0.25); g.fill();
       }
       g.beginPath(); g.arc(cx, cy, r, 0, Math.PI*2);
       g.fillStyle = thermalCss(rgb); g.fill();
       g.lineWidth = 2; g.strokeStyle = CHART_SURFACE; g.stroke();
-      // A label sitting inside a coloured fill picks its ink from that fill's
-      // luminance, so it clears contrast at both ends of the ramp.
+      // ink picked from the fill's luminance, so it clears contrast at both ends
       g.fillStyle = thermalLum(rgb) > 0.6 ? '#0b0f17' : '#ffffff';
       g.font = '600 ' + Math.round(r * 0.55) + 'px -apple-system,system-ui,sans-serif';
       g.textBaseline = 'middle';
@@ -741,7 +487,7 @@ function drawHeatmap(){
       const d = Math.sqrt(dx*dx + dy*dy);
       if(d < bestD){ bestD = d; best = p; }
     });
-    // Hit target is generously bigger than the circle -- nobody lands dead-centre.
+    // hit target generously bigger than the circle -- nobody lands dead-centre
     if(!best || bestD > 46 || best.v === null){
       if(hmHover !== null){ hmHover = null; drawHeatmap(); }
       $('hmTip').classList.remove('show');
@@ -755,12 +501,12 @@ function drawHeatmap(){
     head.className = 'tth';
     head.textContent = 'slot ' + (best.i + 1);
     const row = document.createElement('div'); row.className = 'ttr';
-    const key = document.createElement('i'); key.className = 'lkey';
+    const key = document.createElement('i'); key.className = 'ttk';
     key.style.background = thermalCss(thermalRamp((best.v - tMin) / ((tMax - tMin) || 1)));
     const val = document.createElement('span'); val.className = 'ttv';
     val.textContent = best.v.toFixed(2) + '°C';
     const nm = document.createElement('span'); nm.className = 'ttn';
-    nm.textContent = sensorNames[best.i] || ('Sensor ' + best.i);
+    nm.textContent = sensorLabel(best.i);
     row.append(key, val, nm);
     tip.append(head, row);
     tip.classList.add('show');
@@ -802,19 +548,11 @@ function update(data){
   const gaugeMax = Math.max(500, Math.ceil((Math.max(...history,data.p)+50)/500)*500);
   drawGauge(data.p, gaugeMax);
   drawSpark();
+
   if(data.cfg !== cfgVersion){ cfgVersion = data.cfg; loadSensorConfig(); }
   lastTemps = data.temps;
   renderTemps(data.temps);
-
   drawHeatmap();
-  pushTempHistory(data.temps);
-  renderLegend(data.temps.length);
-  updateLegendValues(data.temps);
-  const span = tempHistory.length ? tempHistory[0].length : 0;
-  $('thermoSub').textContent = span < 2 ? '' :
-    'last ' + (span >= 60 ? Math.round(span/60) + ' min' : span + ' s') +
-    ' · ' + data.temps.length + ' sensors';
-  drawThermo();
 }
 
 function connect(){
@@ -842,10 +580,10 @@ $('resetEnergy').addEventListener('click', ()=>{
 });
 
 $('ip').textContent = location.host;
-window.addEventListener('resize', ()=>{ drawSpark(); drawThermo(); drawHeatmap(); });
-renderThermoScale();
+window.addEventListener('resize', ()=>{ drawSpark(); drawHeatmap(); });
+renderScale();
 loadCalibration();
-loadSensorConfig();   // names + thermal range, before the first frame lands
+loadSensorConfig();
 connect();
 </script>
 </body>

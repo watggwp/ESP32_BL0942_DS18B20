@@ -134,7 +134,7 @@ function render(){
   }
   box.innerHTML = rows.map((r,i)=>`
     <div class="row${r.online?'':' off'}">
-      <div class="slot">${i}</div>
+      <div class="slot">${i + 1}</div>
       <div class="temp none" id="t${i}">&mdash;</div>
       <div class="meta">
         <input id="n${i}" maxlength="15" autocomplete="off" placeholder="name this sensor">
