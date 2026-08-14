@@ -11,10 +11,14 @@
 //
 // Cards on the page:
 //   Active Power gauge, stat tiles, power sparkline (last 90 s)
-//   Accumulated energy + reset
+//   Accumulated energy
 //   Thermal Map    -- see below
 //   DS18B20 Temperatures -- 3x3 cards in mounting order
-//   BL0942 calibration
+//
+// READ-ONLY BY DESIGN. Nothing here writes to the board -- calibration, the
+// energy reset, sensor names and Wi-Fi all live behind /settings. This is the
+// screen that gets left open on a wall display, so it holds no control that a
+// passer-by can press.
 //
 // SERPENTINE LAYOUT. The nine probes are mounted in a serpentine so the cable
 // never has to jump back across the array: rows 0 and 2 run left to right, row 1
@@ -99,9 +103,6 @@ h1 span{color:var(--accent)}
 
 .energy{grid-column:span 12;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
 .energy .val{font-size:1.6rem;font-weight:800;color:var(--accent2)}
-.btn{background:var(--panel2);border:1px solid var(--border);color:var(--text);padding:9px 16px;
-  border-radius:10px;cursor:pointer;font-size:.85rem;transition:.15s}
-.btn:hover{border-color:var(--accent);color:var(--accent)}
 
 .heatmap{grid-column:span 12}
 .hm-wrap{display:flex;flex-direction:column;align-items:center;margin-top:2px}
@@ -138,18 +139,6 @@ h1 span{color:var(--accent)}
 .tbar i{display:block;height:100%;width:0%;background:#4fa8f2;transition:width .8s,background .8s}
 .tcard.off{opacity:.35}
 
-.calib{grid-column:span 12}
-.calib .row{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;margin-top:8px}
-.field{display:flex;flex-direction:column;gap:4px}
-.field label{font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
-.field input{background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:8px;
-  padding:8px 10px;width:110px;font-size:.9rem}
-.hint{color:var(--muted);font-size:.78rem;margin-top:10px;line-height:1.5}
-.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%) translateY(20px);opacity:0;
-  background:var(--panel2);border:1px solid var(--accent);color:var(--text);padding:10px 18px;border-radius:10px;
-  font-size:.85rem;transition:.25s;pointer-events:none}
-.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
-
 footer{margin-top:22px;color:var(--muted);font-size:.75rem;text-align:center}
 @media(max-width:820px){.hero{grid-column:span 12}.stats{grid-column:span 12;grid-template-columns:repeat(3,1fr)}}
 @media(max-width:520px){.stats{grid-template-columns:repeat(2,1fr)}}
@@ -168,8 +157,7 @@ footer{margin-top:22px;color:var(--muted);font-size:.75rem;text-align:center}
   <h1>&#9889; ESP32 <span>Power</span> &amp; Temperature Monitor</h1>
   <div class="hnav">
     <span class="status"><span class="dot" id="dot"></span><span id="statusText">connecting&hellip;</span></span>
-    <a class="navbtn" href="/settings">&#127777; Sensors</a>
-    <a class="navbtn" href="/wifi">&#128246; Wi-Fi</a>
+    <a class="navbtn" href="/settings">&#9881;&#65039; Settings</a>
   </div>
 </header>
 
@@ -197,7 +185,7 @@ footer{margin-top:22px;color:var(--muted);font-size:.75rem;text-align:center}
 
   <div class="card energy">
     <div><h2 style="margin-bottom:4px">Accumulated Energy</h2><div class="val" id="eVal">0.000 kWh</div></div>
-    <button class="btn" id="resetEnergy">Reset counter</button>
+    <a class="navbtn" href="/settings#calibration">&#9889; Calibration &amp; reset</a>
   </div>
 
   <div class="card heatmap">
@@ -226,22 +214,9 @@ footer{margin-top:22px;color:var(--muted);font-size:.75rem;text-align:center}
     <div class="row" id="tempRow"></div>
   </div>
 
-  <div class="card calib">
-    <h2>BL0942 Calibration</h2>
-    <div class="row">
-      <div class="field"><label>Current kI</label><input id="kI" type="number" step="0.0001"></div>
-      <div class="field"><label>Voltage kV</label><input id="kV" type="number" step="0.0001"></div>
-      <div class="field"><label>Power kP</label><input id="kP" type="number" step="0.0001"></div>
-      <button class="btn" id="saveCalib">Save</button>
-    </div>
-    <div class="hint">Nominal factory constants are only a starting point. Measure Voltage/Current/Power with a
-      trusted meter under a known load, then set e.g. <code>kV = true_volts / displayed_volts</code> (same idea
-      for kI, kP) and Save &mdash; values persist in flash across reboots.</div>
-  </div>
 </div>
 
 <footer>ESP32 &middot; BL0942 &middot; 9&times; DS18B20 &middot; <span id="fw" title="">firmware &mdash;</span></footer>
-<div class="toast" id="toast"></div>
 
 <script src="/thermal.js"></script>
 <script>
@@ -267,11 +242,6 @@ let CHART_INK, CHART_SURFACE;
 function serp(i){
   const row = Math.floor(i / 3);
   return row * 3 + (row % 2 ? 2 - (i % 3) : i % 3);
-}
-
-function toast(msg){
-  const t = $('toast'); t.textContent = msg; t.classList.add('show');
-  clearTimeout(toast._h); toast._h = setTimeout(()=>t.classList.remove('show'), 2200);
 }
 
 function loadSensorConfig(){
@@ -575,26 +545,8 @@ function connect(){
   es.addEventListener('data', e=>{ try{ update(JSON.parse(e.data)); }catch(err){} });
 }
 
-function loadCalibration(){
-  fetch('/api/calibration').then(r=>r.json()).then(c=>{
-    $('kI').value=c.kI; $('kV').value=c.kV; $('kP').value=c.kP;
-  });
-}
-
-$('saveCalib').addEventListener('click', ()=>{
-  const body = { kI: parseFloat($('kI').value), kV: parseFloat($('kV').value), kP: parseFloat($('kP').value) };
-  fetch('/api/calibration', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)})
-    .then(r=>r.ok ? toast('Calibration saved') : toast('Save failed'));
-});
-
-$('resetEnergy').addEventListener('click', ()=>{
-  if(!confirm('Reset accumulated energy counter to 0?')) return;
-  fetch('/api/energy/reset', {method:'POST'}).then(()=>toast('Energy counter reset'));
-});
-
 window.addEventListener('resize', ()=>{ drawSpark(); drawHeatmap(); });
 renderScale();
-loadCalibration();
 loadSensorConfig();
 connect();
 </script>

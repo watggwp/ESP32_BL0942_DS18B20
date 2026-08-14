@@ -34,8 +34,9 @@ void begin(const char *hostname, void (*tick)() = nullptr);
 // captive portal stops answering.
 void loop();
 
-// Registers /wifi, /api/wifi*, and the catch-all that redirects captive-portal
-// probes. Call before server.begin().
+// Registers /api/wifi* and the catch-all that redirects captive-portal probes
+// to /wifi. Serving that page is the caller's job -- it is the Wi-Fi tab of the
+// settings document. Call before server.begin().
 void registerRoutes(AsyncWebServer &server);
 
 WiFiPortalState state();

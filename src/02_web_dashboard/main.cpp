@@ -236,9 +236,15 @@ static void setupRoutes() {
         request->send(200, "text/html", DASHBOARD_HTML);
     });
 
-    server.on("/settings", HTTP_GET, [](AsyncWebServerRequest *request) {
+    // One settings document, two entry points: /settings opens on the Sensors
+    // tab, /wifi on the Wi-Fi one. /wifi has to keep working as its own URL --
+    // it is where the captive portal and the setup-mode redirect above send
+    // people, and it is what gets written on a label.
+    auto sendSettings = [](AsyncWebServerRequest *request) {
         request->send(200, "text/html", SETTINGS_HTML);
-    });
+    };
+    server.on("/settings", HTTP_GET, sendSettings);
+    server.on("/wifi", HTTP_GET, sendSettings);
 
     // Shared by both pages, so the thermal palette has one definition.
     server.on("/thermal.js", HTTP_GET, [](AsyncWebServerRequest *request) {

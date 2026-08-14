@@ -9,7 +9,6 @@
 #include <esp_mac.h>
 
 #include "config.h"
-#include "wifi_html.h"
 
 namespace {
 
@@ -361,9 +360,9 @@ void WiFiPortal::loop() {
 }
 
 void WiFiPortal::registerRoutes(AsyncWebServer &server) {
-    server.on("/wifi", HTTP_GET, [](AsyncWebServerRequest *request) {
-        request->send(200, "text/html", WIFI_HTML);
-    });
+    // The /wifi page itself belongs to the app (it is one tab of the settings
+    // document), so this module only owns the API and the captive-portal
+    // redirect -- both of which point at that path.
 
     // Sub-paths first: a plain-string route matches its own children too
     // ("/api/wifi" would otherwise swallow "/api/wifi/scan").

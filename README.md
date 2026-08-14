@@ -107,13 +107,25 @@ Everything from Example 1 plus an ESPAsyncWebServer dashboard at
 
 - Animated arc gauge for active power, rolling ~5-minute power sparkline
 - Voltage / current / frequency / apparent VA / free heap / uptime tiles
-- Accumulated energy (kWh), integrated in software from active power, with a
-  reset button — persists across reboots in NVS
+- Accumulated energy (kWh), integrated in software from active power — persists
+  across reboots in NVS
 - **3×3 temperature grid** with a thermal-camera colour ramp (below)
-- **Sensor setup page** at `/settings` — fixed slots and names (below)
-- **Wi-Fi setup portal** at `/wifi` — join a new network from a phone (below)
-- Calibration panel to tune BL0942 readings against a real meter, persists to NVS
 - Updates pushed once a second over Server-Sent Events (`GET /events`)
+
+The dashboard is **read-only**: it holds no control that a passer-by can press,
+which matters for the screen that gets left open on a wall. Everything you set
+once lives behind `/settings`, as three tabs of one page:
+
+| Tab | What it does |
+|---|---|
+| **Sensors** | fix each DS18B20 to a slot and name it (below), with live temperatures beside each row |
+| **Calibration** | tune BL0942 kI/kV/kP against a real meter next to a live V/A/W readout; reset the kWh total |
+| **Wi-Fi** | join a new network from a phone, see what the board is connected to (below) |
+
+`/wifi` opens that same page on the Wi-Fi tab — the captive portal and the
+setup-mode redirect point there, so labels and QR codes printed with that URL
+keep working. The scan only runs while the tab is open, since it takes the radio
+off the network for seconds at a time.
 
 Both pages are self-contained HTML with inline CSS/JS and **no CDN or external
 font**, because the device has no guaranteed internet access. The one shared
@@ -257,8 +269,8 @@ AP is off-channel, so a failed request there is the normal case, not an error.
 | Method | Path | Purpose |
 |---|---|---|
 | GET | `/` | dashboard page (redirects to `/wifi` in setup mode) |
-| GET | `/settings` | sensor setup page |
-| GET | `/wifi` | Wi-Fi setup page |
+| GET | `/settings` | settings page — Sensors / Calibration / Wi-Fi tabs |
+| GET | `/wifi` | the same page, opened on the Wi-Fi tab |
 | GET | `/thermal.js` | shared colour-ramp helpers |
 | GET | `/events` | Server-Sent Events stream of live samples |
 | GET | `/api/calibration` | current `{kI, kV, kP}` multipliers |
@@ -410,10 +422,9 @@ src/
     main.cpp                Example 1
   02_web_dashboard/
     main.cpp                Example 2: sensor slot map, routes, SSE push
-    wifi_portal.h/.cpp      NVS credentials + captive-portal fallback
-    dashboard_html.h        the dashboard page
-    settings_html.h         the /settings sensor setup page
-    wifi_html.h             the /wifi setup page
+    wifi_portal.h/.cpp      NVS credentials + captive-portal fallback (API only)
+    dashboard_html.h        the read-only dashboard page
+    settings_html.h         /settings and /wifi -- sensors, calibration, Wi-Fi tabs
     thermal_js.h            shared thermal colour ramp, served at /thermal.js
 ```
 
