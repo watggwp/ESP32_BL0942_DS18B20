@@ -205,6 +205,8 @@ static void updateLed(bool meterOk) {
 static void sendSensorList(AsyncWebServerRequest *request) {
     JsonDocument doc;
     doc["version"] = configVersion;
+    doc["fw"] = FIRMWARE_VERSION;      // both pages that fetch this show it in
+    doc["build"] = FIRMWARE_BUILD;     // their footer -- see config.h
     doc["max"] = DS18B20_COUNT;
     doc["tmin"] = TEMP_COLOR_MIN_C;   // ends of the thermal ramp, from config.h
     doc["tmax"] = TEMP_COLOR_MAX_C;
@@ -333,6 +335,7 @@ void setup() {
     Serial.begin(115200);
     delay(300);
     Serial.println("\n=== ESP32 + BL0942 + DS18B20 -- Web Dashboard Example ===");
+    Serial.printf("Firmware v%s (built %s)\n", FIRMWARE_VERSION, FIRMWARE_BUILD);
 
     led.begin(STATUS_LED_PIN, STATUS_LED_ACTIVE_HIGH);
     led.setMode(LedMode::BLINK_FAST);

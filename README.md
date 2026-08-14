@@ -264,10 +264,10 @@ AP is off-channel, so a failed request there is the normal case, not an error.
 | GET | `/api/calibration` | current `{kI, kV, kP}` multipliers |
 | POST | `/api/calibration` | set `{kI, kV, kP}`, persists to NVS |
 | POST | `/api/energy/reset` | zero the accumulated kWh counter |
-| GET | `/api/sensors` | `{version, max, tmin, tmax, sensors:[{slot, addr, name, online}]}` |
+| GET | `/api/sensors` | `{version, fw, build, max, tmin, tmax, sensors:[{slot, addr, name, online}]}` |
 | POST | `/api/sensors` | `{"sensors":[{"addr","name"}]}` in slot order, persists to NVS |
 | POST | `/api/sensors/rescan` | re-run the OneWire scan and append new sensors |
-| GET | `/api/wifi` | `{portal, connected, ssid, ip, rssi, host, ap, saved}` |
+| GET | `/api/wifi` | `{portal, connected, ssid, ip, rssi, host, ap, saved, fw, build}` |
 | POST | `/api/wifi` | `{"ssid","pass"}`, persists to NVS and reboots |
 | GET | `/api/wifi/scan` | last scan result, or `{"scanning":true}`; `?force=1` restarts it |
 | POST | `/api/wifi/forget` | erase credentials and reboot into the setup portal |
@@ -309,6 +309,8 @@ All of `include/config.h`, shared by both environments:
 
 | Setting | Default | Meaning |
 |---|---|---|
+| `FIRMWARE_VERSION` | `"1.0.0"` | bump per release; shown in the boot banner and on every page |
+| `FIRMWARE_BUILD` | `__DATE__ " " __TIME__` | compile timestamp, so two builds of one version are distinguishable |
 | `BL0942_RX_PIN` / `BL0942_TX_PIN` | 16 / 17 | UART2 pins to the metering IC |
 | `BL0942_BAUD` | 4800 | must match the SCLK_BPS strap — measured, not assumed |
 | `BL0942_ADDRESS` | 3 | from the A1 / A2_NCS straps |

@@ -172,6 +172,7 @@ function status(){
     if(typeof d.rssi === 'number') kv.push(['Signal', d.rssi + ' dBm']);
     if(d.portal && d.ap) kv.push(['Setup AP', d.ap]);
     kv.push(['Saved network', d.saved || '(none)']);
+    if(d.fw) kv.push(['Firmware', 'v' + d.fw + (d.build ? '  (' + d.build + ')' : '')]);
     $('kv').innerHTML = kv.map(([k,v])=>`<dt></dt><dd></dd>`).join('');
     // text via property, not markup: an SSID is user-controlled
     const dts = $('kv').querySelectorAll('dt'), dds = $('kv').querySelectorAll('dd');

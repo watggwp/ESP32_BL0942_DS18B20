@@ -73,6 +73,7 @@ header nav{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
   background:var(--panel2);border:1px solid var(--accent);color:var(--text);padding:10px 18px;border-radius:10px;
   font-size:.85rem;transition:.25s;pointer-events:none;z-index:9}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+footer{margin-top:22px;color:var(--muted);font-size:.75rem;text-align:center}
 @media(max-width:520px){
   .row{grid-template-columns:30px 62px 1fr 70px;gap:8px}
   .addr{font-size:.62rem}
@@ -114,6 +115,8 @@ header nav{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 </div>
 
 <div class="toast" id="toast"></div>
+
+<footer><span id="fw" title="">firmware &mdash;</span></footer>
 
 <script src="/thermal.js"></script>
 <script>
@@ -168,6 +171,10 @@ function move(i, d){
 function load(){
   fetch('/api/sensors').then(r=>r.json()).then(d=>{
     maxSlots = d.max || 0;
+    if(d.fw){
+      $('fw').textContent = 'firmware v' + d.fw;
+      if(d.build) $('fw').title = 'built ' + d.build;
+    }
     if(typeof d.tmin === 'number') tMin = d.tmin;
     if(typeof d.tmax === 'number') tMax = d.tmax;
     // src remembers where this sensor sits in the firmware's slot order, which

@@ -240,7 +240,7 @@ footer{margin-top:22px;color:var(--muted);font-size:.75rem;text-align:center}
   </div>
 </div>
 
-<footer>ESP32 &middot; BL0942 &middot; 9&times; DS18B20 &middot; <span id="ip"></span></footer>
+<footer>ESP32 &middot; BL0942 &middot; 9&times; DS18B20 &middot; <span id="fw" title="">firmware &mdash;</span></footer>
 <div class="toast" id="toast"></div>
 
 <script src="/thermal.js"></script>
@@ -277,6 +277,10 @@ function toast(msg){
 function loadSensorConfig(){
   fetch('/api/sensors').then(r=>r.json()).then(d=>{
     sensorNames = (d.sensors||[]).map(s=>s.name||'');
+    if(d.fw){
+      $('fw').textContent = 'firmware v' + d.fw;
+      if(d.build) $('fw').title = 'built ' + d.build;
+    }
     if(typeof d.tmin === 'number') tMin = d.tmin;
     if(typeof d.tmax === 'number') tMax = d.tmax;
     labelsDirty = true;
@@ -588,7 +592,6 @@ $('resetEnergy').addEventListener('click', ()=>{
   fetch('/api/energy/reset', {method:'POST'}).then(()=>toast('Energy counter reset'));
 });
 
-$('ip').textContent = location.host;
 window.addEventListener('resize', ()=>{ drawSpark(); drawHeatmap(); });
 renderScale();
 loadCalibration();

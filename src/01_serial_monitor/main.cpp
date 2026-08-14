@@ -55,6 +55,7 @@ void setup() {
     Serial.begin(115200);
     delay(300);
     Serial.println("\n=== ESP32 + BL0942 + DS18B20 -- Serial Monitor Example ===");
+    Serial.printf("Firmware v%s (built %s)\n", FIRMWARE_VERSION, FIRMWARE_BUILD);
 
     led.begin(STATUS_LED_PIN, STATUS_LED_ACTIVE_HIGH);
     led.setMode(LedMode::BLINK_FAST);

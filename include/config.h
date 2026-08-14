@@ -4,6 +4,15 @@
 // sensor, CT-based current sensing (2000:1, 1ohm+1ohm burden), 9x DS18B20 on
 // one OneWire bus, status LED on GPIO2.
 
+// ---- Firmware version -------------------------------------------------------
+// Bump this on every release. It is the single source of truth: the boot banner,
+// the dashboard footer, the sensor setup page and the Wi-Fi status list all read
+// it from here, so a board in the field can be identified without a serial
+// cable. FIRMWARE_BUILD stamps the compile time, which is what tells two builds
+// of the same version apart while a change is being tested.
+#define FIRMWARE_VERSION "2.1.3"
+#define FIRMWARE_BUILD   __DATE__ " " __TIME__
+
 // ---- BL0942 energy metering IC (UART2) -------------------------------------
 #define BL0942_RX_PIN      16   // ESP32 GPIO16 (RXD1) <- BL0942 pin14 TX/SDO
 #define BL0942_TX_PIN      17   // ESP32 GPIO17 (TXD1) -> BL0942 pin13 RX/SDI

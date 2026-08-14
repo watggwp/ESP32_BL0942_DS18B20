@@ -164,6 +164,8 @@ void sendStatus(AsyncWebServerRequest *request) {
     doc["host"] = hostName;
     doc["ap"] = apName;
     doc["saved"] = savedSsid;
+    doc["fw"] = FIRMWARE_VERSION;    // the only page reachable in portal mode,
+    doc["build"] = FIRMWARE_BUILD;   // so the version has to be readable here too
     if (portalState == WiFiPortalState::CONNECTED) {
         doc["ssid"] = WiFi.SSID();
         doc["ip"] = WiFi.localIP().toString();
