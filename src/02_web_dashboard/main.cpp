@@ -8,12 +8,11 @@
 // sensor's ROM address to a fixed dashboard position and a name, stored in NVS,
 // so "slot 3" stays the same physical sensor across reboots and rewiring.
 //
-// First-time setup: copy include/secrets.h.example to include/secrets.h and
-// fill in your Wi-Fi SSID/password (that file is gitignored on purpose).
+// Wi-Fi credentials also live in NVS and are entered from a phone at /wifi --
+// see wifi_portal.h. Nothing about the network is compiled in.
 
 #include <Arduino.h>
 #include <WiFi.h>
-#include <ESPmDNS.h>
 #include <Preferences.h>
 #include <OneWire.h>
 #include <DallasTemperature.h>
@@ -26,16 +25,7 @@
 #include "dashboard_html.h"
 #include "settings_html.h"
 #include "thermal_js.h"
-
-#if __has_include("secrets.h")
-#include "secrets.h"
-#else
-#error "Missing include/secrets.h -- copy include/secrets.h.example to include/secrets.h and fill in your Wi-Fi credentials."
-#endif
-
-#ifndef DEVICE_HOSTNAME
-#define DEVICE_HOSTNAME "esp32-powermeter"
-#endif
+#include "wifi_portal.h"
 
 BL0942 meter;
 StatusLED led;
@@ -200,29 +190,15 @@ static void loadCalibration() {
     Serial.printf("Loaded calibration kI=%.4f kV=%.4f kP=%.4f, energy=%.3f kWh\n", kI, kV, kP, energyKWh);
 }
 
-static void connectWiFi() {
-    WiFi.mode(WIFI_STA);
-    WiFi.setHostname(DEVICE_HOSTNAME);
-    WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-
-    Serial.printf("Wi-Fi: connecting to \"%s\"", WIFI_SSID);
-    uint32_t start = millis();
-    while (WiFi.status() != WL_CONNECTED && millis() - start < 20000) {
-        delay(250);
-        Serial.print('.');
-        led.update();
-    }
-    Serial.println();
-
-    if (WiFi.status() == WL_CONNECTED) {
-        Serial.printf("Wi-Fi: connected, IP=%s\n", WiFi.localIP().toString().c_str());
-        if (MDNS.begin(DEVICE_HOSTNAME)) {
-            Serial.printf("mDNS: http://%s.local/\n", DEVICE_HOSTNAME);
-        }
-        led.setMode(LedMode::SOLID);
-    } else {
-        Serial.println("Wi-Fi: FAILED to connect within 20s -- dashboard unavailable, sensors still run");
+// A fault on the meter outranks everything: a board that is on the network but
+// not reading is the more urgent of the two problems.
+static void updateLed(bool meterOk) {
+    if (!meterOk) {
         led.setMode(LedMode::BLINK_ERROR);
+    } else switch (WiFiPortal::state()) {
+        case WiFiPortalState::CONNECTED:  led.setMode(LedMode::SOLID);      break;
+        case WiFiPortalState::PORTAL:     led.setMode(LedMode::BLINK_SLOW); break;   // waiting for setup
+        case WiFiPortalState::CONNECTING: led.setMode(LedMode::BLINK_FAST); break;
     }
 }
 
@@ -249,6 +225,12 @@ static void sendSensorList(AsyncWebServerRequest *request) {
 
 static void setupRoutes() {
     server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
+        // In setup mode the only useful thing anyone can do here is hand over
+        // credentials, so send them straight to the portal page.
+        if (WiFiPortal::state() == WiFiPortalState::PORTAL) {
+            request->redirect("/wifi");
+            return;
+        }
         request->send(200, "text/html", DASHBOARD_HTML);
     });
 
@@ -341,6 +323,8 @@ static void setupRoutes() {
         });
     server.addHandler(sensorHandler);
 
+    WiFiPortal::registerRoutes(server);   // /wifi, /api/wifi*, captive-portal catch-all
+
     server.addHandler(&events);
     server.begin();
 }
@@ -364,7 +348,14 @@ void setup() {
     sensorPrefs.begin("sensors", false);
     applySensorMap();
 
-    connectWiFi();
+    // Conversions run in the background from here on: request now, collect on
+    // the next cycle. A 12-bit DS18B20 needs 750ms and loop() reads once a
+    // second, so the value is always ready -- and loop() never sits blocked
+    // waiting for it, which is what keeps the portal's DNS answering.
+    sensors.setWaitForConversion(false);
+    sensors.requestTemperatures();
+
+    WiFiPortal::begin(DEVICE_HOSTNAME, [] { led.update(); });
     setupRoutes();
 
     lastRead = lastEnergyReadMs = lastPersist = millis();
@@ -372,11 +363,14 @@ void setup() {
 
 void loop() {
     led.update();
+    WiFiPortal::loop();   // above the early return below -- the portal DNS is
+                          // polled from here and starves if it is skipped
 
     if (rescanRequested) {
         rescanRequested = false;
         applySensorMap();
         configVersion++;
+        sensors.requestTemperatures();   // the bus search aborted the pending one
     }
 
     uint32_t now = millis();
@@ -390,17 +384,13 @@ void loop() {
     bool ok = meter.readAll(lastSample);
     if (ok) {
         energyKWh += (lastSample.activePowerW * dtHours) / 1000.0f;
-        if (WiFi.status() == WL_CONNECTED) led.setMode(LedMode::SOLID);
-    } else {
-        led.setMode(LedMode::BLINK_ERROR);
     }
+    updateLed(ok);
 
     if (now - lastPersist > 60000) {
         prefs.putFloat("kwh", energyKWh);
         lastPersist = now;
     }
-
-    sensors.requestTemperatures();
 
     JsonDocument doc;
     doc["v"] = ok ? lastSample.voltageV : 0;
@@ -413,6 +403,8 @@ void loop() {
     doc["heap"] = ESP.getFreeHeap();
     doc["cfg"] = configVersion;   // pages refetch their labels when this moves
 
+    // Reads the conversion started on the previous cycle, so this returns
+    // immediately instead of blocking for the 750ms it takes to run.
     JsonArray temps = doc["temps"].to<JsonArray>();
     for (uint8_t i = 0; i < slotCount; i++) {
         if (!slots[i].online) {
@@ -426,6 +418,7 @@ void loop() {
             temps.add(c);
         }
     }
+    sensors.requestTemperatures();   // start the next one; ready a second from now
 
     String payload;
     serializeJson(doc, payload);

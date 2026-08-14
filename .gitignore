@@ -5,9 +5,9 @@
 .vscode/launch.json
 .vscode/ipch
 
-# Wi-Fi credentials — copy include/secrets.h.example to include/secrets.h
-# (also ignored from the repo root; kept here so the firmware/ folder is
-#  self-contained if copied out on its own)
+# The firmware no longer reads this file — Wi-Fi credentials live in NVS and are
+# entered at /wifi. The rule stays so any leftover copy from before that change
+# still cannot be committed.
 include/secrets.h
 
 # OS / editor cruft

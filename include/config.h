@@ -29,6 +29,15 @@
 // ---- Sampling ----------------------------------------------------------------
 #define SENSOR_READ_INTERVAL_MS 1000
 
+// ---- Wi-Fi setup portal (example 2) -------------------------------------------
+// Credentials live in NVS only and are entered from a phone at /wifi, so a board
+// can be moved to a new site without a rebuild and no password is ever compiled
+// into the image. A board with nothing stored comes up as its own setup AP.
+#define DEVICE_HOSTNAME "esp32-powermeter"  // http://esp32-powermeter.local/ (mDNS)
+#define WIFI_CONNECT_TIMEOUT_MS 10000  // give up on the saved network after this
+#define WIFI_PORTAL_AP_PREFIX   "P1-Setup"  // AP name gets "-<last 2 MAC bytes>"
+#define WIFI_PORTAL_AP_PASSWORD ""     // <8 chars = open network (portal is local-only)
+
 // ---- Dashboard thermal colour range (example 2) -------------------------------
 // Ends of the thermal ramp on the temperature cards: MIN and below is the coldest
 // blue, MAX and above is deep red. Served to the page via /api/sensors, so this

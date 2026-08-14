@@ -29,8 +29,11 @@ body{padding:20px;max-width:760px;margin:0 auto}
 header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:18px}
 h1{font-size:1.25rem;font-weight:700;margin:0;letter-spacing:.2px}
 h1 span{color:var(--accent)}
-header a{color:var(--muted);font-size:.82rem;text-decoration:none;border-bottom:1px dotted var(--border)}
-header a:hover{color:var(--accent);border-bottom-color:var(--accent)}
+header nav{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.navbtn{display:inline-flex;align-items:center;gap:6px;background:var(--panel2);
+  border:1px solid var(--border);color:var(--text);padding:8px 14px;border-radius:10px;
+  font-size:.82rem;text-decoration:none;white-space:nowrap;transition:.15s}
+.navbtn:hover{border-color:var(--accent);color:var(--accent)}
 
 .card{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--border);
   border-radius:var(--radius);padding:18px;margin-bottom:16px}
@@ -80,7 +83,10 @@ header a:hover{color:var(--accent);border-bottom-color:var(--accent)}
 
 <header>
   <h1>&#127777; Sensor <span>Setup</span></h1>
-  <a href="/">&larr; Back to dashboard</a>
+  <nav>
+    <a class="navbtn" href="/wifi">&#128246; Wi-Fi</a>
+    <a class="navbtn" href="/">&larr; Dashboard</a>
+  </nav>
 </header>
 
 <div class="card">

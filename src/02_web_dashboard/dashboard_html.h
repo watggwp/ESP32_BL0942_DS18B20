@@ -67,6 +67,11 @@ h1 span{color:var(--accent)}
 .status{display:flex;align-items:center;gap:8px;font-size:.85rem;color:var(--muted)}
 .dot{width:9px;height:9px;border-radius:50%;background:var(--bad);box-shadow:0 0 8px var(--bad);transition:.3s}
 .dot.live{background:var(--accent);box-shadow:0 0 10px var(--accent)}
+.hnav{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.navbtn{display:inline-flex;align-items:center;gap:6px;background:var(--panel2);
+  border:1px solid var(--border);color:var(--text);padding:8px 14px;border-radius:10px;
+  font-size:.82rem;text-decoration:none;white-space:nowrap;transition:.15s}
+.navbtn:hover{border-color:var(--accent);color:var(--accent)}
 
 .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:16px;}
 .card{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--border);
@@ -161,7 +166,11 @@ footer{margin-top:22px;color:var(--muted);font-size:.75rem;text-align:center}
 <body>
 <header>
   <h1>&#9889; ESP32 <span>Power</span> &amp; Temperature Monitor</h1>
-  <div class="status"><span class="dot" id="dot"></span><span id="statusText">connecting&hellip;</span></div>
+  <div class="hnav">
+    <span class="status"><span class="dot" id="dot"></span><span id="statusText">connecting&hellip;</span></span>
+    <a class="navbtn" href="/settings">&#127777; Sensors</a>
+    <a class="navbtn" href="/wifi">&#128246; Wi-Fi</a>
+  </div>
 </header>
 
 <div class="grid">

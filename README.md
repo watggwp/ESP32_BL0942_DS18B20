@@ -21,18 +21,17 @@ style temperature grid and per-sensor configuration.
 
 1. Install [PlatformIO](https://platformio.org/) (VS Code extension, or `pip install platformio`).
 2. Open **this folder** in VS Code so PlatformIO picks up `platformio.ini`.
-3. For the web dashboard only — create your Wi-Fi credentials file:
-   ```sh
-   cp include/secrets.h.example include/secrets.h
-   ```
-   Fill in `WIFI_SSID` / `WIFI_PASSWORD`. `include/secrets.h` is gitignored, so
-   your password never gets committed.
-4. Build, upload and watch:
+3. Build, upload and watch:
    ```sh
    pio run -e serial_monitor -t upload -t monitor
    # or
    pio run -e web_dashboard  -t upload -t monitor
    ```
+4. For the web dashboard, tell the board which Wi-Fi to join. There is nothing
+   to edit and no credentials file: a board with no network stored comes up as
+   its own Wi-Fi access point named **`P1-Setup-XXXX`**. Join it from a phone
+   and the setup page opens by itself — see
+   [Wi-Fi setup portal](#wi-fi-setup-portal).
 
 `pio run` with no `-e` builds both environments — a quick "does everything still
 compile" check.
@@ -95,7 +94,7 @@ DS18B20: found 9 device(s) on GPIO4
 ```
 
 No Wi-Fi, no web server — the simplest check that wiring and calibration are
-sane. `include/secrets.h` is not needed for this environment.
+sane.
 
 ---
 
@@ -112,6 +111,7 @@ Everything from Example 1 plus an ESPAsyncWebServer dashboard at
   reset button — persists across reboots in NVS
 - **3×3 temperature grid** with a thermal-camera colour ramp (below)
 - **Sensor setup page** at `/settings` — fixed slots and names (below)
+- **Wi-Fi setup portal** at `/wifi` — join a new network from a phone (below)
 - Calibration panel to tune BL0942 readings against a real meter, persists to NVS
 - Updates pushed once a second over Server-Sent Events (`GET /events`)
 
@@ -189,12 +189,76 @@ a dark card (`THERMAL_TEXT_FLOOR`, default `0.45`); the border, tint, glow and b
 keep the full-saturation deep red. Lower the floor for punchier numbers at the
 cost of legibility.
 
+### Wi-Fi setup portal
+
+Credentials live in NVS and **nothing about the network is compiled into the
+firmware**. There is no credentials header to copy and no password anywhere in
+the source tree, so every board off the flasher behaves identically and the same
+binary can be moved between sites.
+
+A board with nothing stored goes straight to the setup AP. One with a saved
+network tries it first; if it cannot join within `WIFI_CONNECT_TIMEOUT_MS`
+(20 s) it raises an open AP named `P1-Setup-XXXX` (last two bytes of its MAC) at
+`192.168.4.1`, with a DNS server that answers every lookup with its own address.
+That is what makes a phone pop its **"Sign in to network"** sheet on its own and
+land on `/wifi` — pick a network, type the password, save. The board reboots
+into it, and comes back to the setup AP by itself if the password was wrong.
+
+The station keeps retrying the saved network underneath the portal, and the
+portal folds itself away if that retry lands — a router that was simply slower
+to boot than the meter will not leave a cabinet-mounted board stuck in setup
+mode until someone notices.
+
+The page is reachable at `/wifi` any time the board is on the LAN, from the
+**📶 Wi-Fi** button in the header of every page. **Forget saved network** erases
+the credentials and restarts into setup mode.
+
+**Sensors keep running the whole time the portal is up.** Nothing in the portal
+blocks: the DNS is pumped from `loop()` and the web server runs on its own task,
+so the BL0942 is still read once a second and the kWh total still accumulates
+and persists — you just have nobody watching the SSE stream. This is also why
+DS18B20 conversions are non-blocking (`setWaitForConversion(false)`, requested
+one cycle and collected the next): a blocking 750 ms conversion would starve the
+portal's DNS for three quarters of every second.
+
+**Why the network list is scanned before the AP goes up.** A scan sweeps every
+channel, which takes the radio away from the setup AP for seconds at a time and
+drops the phone that is sitting on the page waiting for the list. So the scan
+runs once at boot, before `softAP()` is called, and the portal opens with the
+list already in hand.
+
+Two things make a *manual* rescan work anyway, both of which cost real debugging
+to find:
+
+- `esp_wifi_scan_start()` **fails outright while the station is mid-connect**
+  (`wifi:sta is connecting, return error`) — exactly the state a board is in
+  right after someone mistypes a password, since it keeps retrying that network
+  underneath the portal. `WiFi.disconnect()` alone does not fix it: the call
+  returns before the driver has finished the handshake step it is on, so the
+  scan a moment later is still refused. Dropping the station interface and
+  putting it back (`enableSTA(false)` / `enableSTA(true)`) is what reliably ends
+  a connect attempt. The AP is a separate interface and survives it.
+- A refused scan leaves `scanComplete()` at `-2` forever, which is
+  indistinguishable from "never ran". Without a flag recording the refusal, the
+  page polls `scanning…` for eternity. It now reports the refusal instead.
+- The AP name comes from `esp_read_mac(…, ESP_MAC_WIFI_SOFTAP)`, straight out of
+  eFuse. `WiFi.softAPmacAddress()` returns all zeros until the AP interface
+  exists — which is *after* the name is needed — so every board would come up
+  calling itself `P1-Setup-0000`.
+
+The page also keeps retrying a dropped poll rather than giving up: mid-sweep the
+AP is off-channel, so a failed request there is the normal case, not an error.
+
+> The same off-channel effect means a dashboard open on the LAN may drop one SSE
+> beat while `/wifi` rescans. It reconnects on its own.
+
 ### HTTP endpoints
 
 | Method | Path | Purpose |
 |---|---|---|
-| GET | `/` | dashboard page |
+| GET | `/` | dashboard page (redirects to `/wifi` in setup mode) |
 | GET | `/settings` | sensor setup page |
+| GET | `/wifi` | Wi-Fi setup page |
 | GET | `/thermal.js` | shared colour-ramp helpers |
 | GET | `/events` | Server-Sent Events stream of live samples |
 | GET | `/api/calibration` | current `{kI, kV, kP}` multipliers |
@@ -203,6 +267,10 @@ cost of legibility.
 | GET | `/api/sensors` | `{version, max, tmin, tmax, sensors:[{slot, addr, name, online}]}` |
 | POST | `/api/sensors` | `{"sensors":[{"addr","name"}]}` in slot order, persists to NVS |
 | POST | `/api/sensors/rescan` | re-run the OneWire scan and append new sensors |
+| GET | `/api/wifi` | `{portal, connected, ssid, ip, rssi, host, ap, saved}` |
+| POST | `/api/wifi` | `{"ssid","pass"}`, persists to NVS and reboots |
+| GET | `/api/wifi/scan` | last scan result, or `{"scanning":true}`; `?force=1` restarts it |
+| POST | `/api/wifi/forget` | erase credentials and reboot into the setup portal |
 
 The `/events` payload carries a `cfg` counter that increments whenever the sensor
 map changes. Open pages watch it and refetch their labels, so editing names on a
@@ -254,9 +322,13 @@ All of `include/config.h`, shared by both environments:
 | `SENSOR_READ_INTERVAL_MS` | 1000 | sampling / SSE push period |
 | `TEMP_COLOR_MIN_C` | 10 | coldest end of the thermal ramp |
 | `TEMP_COLOR_MAX_C` | 80 | hottest end (deep red at or above) |
+| `DEVICE_HOSTNAME` | `"esp32-powermeter"` | mDNS name, `http://esp32-powermeter.local/` |
+| `WIFI_CONNECT_TIMEOUT_MS` | 20000 | give up on the saved network and open the portal |
+| `WIFI_PORTAL_AP_PREFIX` | `"P1-Setup"` | setup AP name; gets `-<last 2 MAC bytes>` |
+| `WIFI_PORTAL_AP_PASSWORD` | `""` | under 8 characters means an open network |
 
-Wi-Fi credentials and the mDNS hostname live in `include/secrets.h` — copy
-`include/secrets.h.example` and edit. That file is gitignored.
+Wi-Fi credentials are not in this table, or anywhere else in the source: they
+are entered at `/wifi` and stored in NVS.
 
 ### What is stored in flash (NVS)
 
@@ -264,8 +336,13 @@ Wi-Fi credentials and the mDNS hostname live in `include/secrets.h` — copy
 |---|---|---|
 | `meter` | `kI`, `kV`, `kP`, `kwh` | on calibration save, energy reset, and every 60 s |
 | `sensors` | `map` (JSON: addresses + names in slot order) | on save from `/settings` |
+| `wifi` | `ssid`, `pass` | on save or forget from `/wifi` |
 
-`pio run -t erase` wipes both, along with the firmware.
+`pio run -t upload` does **not** touch NVS — it only rewrites the app partition,
+so calibration, sensor names and the Wi-Fi network all survive reflashing. You
+therefore run the setup portal once per board, not once per build.
+`pio run -t erase` wipes all three namespaces along with the firmware, and the
+board comes back up as `P1-Setup-XXXX`.
 
 ---
 
@@ -274,9 +351,12 @@ Wi-Fi credentials and the mDNS hostname live in `include/secrets.h` — copy
 | Pattern | Meaning |
 |---|---|
 | Fast blink (5 Hz) | Booting / connecting to Wi-Fi |
-| Slow blink (1 Hz) | Normal operation heartbeat (Serial example) |
+| Slow blink (1 Hz) | Serial example: normal heartbeat. Dashboard: **setup portal is up, waiting for Wi-Fi credentials** |
 | Solid on | Healthy — Wi-Fi connected (dashboard example) |
 | Double-blink burst | BL0942 read failure — check UART wiring |
+
+In the dashboard example a BL0942 fault outranks the Wi-Fi state: a board that
+is on the network but not reading is the more urgent of the two problems.
 
 ---
 
@@ -320,7 +400,6 @@ Long parasitic-power runs are unreliable — prefer 3-wire.
 platformio.ini              two environments: serial_monitor, web_dashboard
 include/
   config.h                  pin map + tunables shared by both examples
-  secrets.h.example          copy to secrets.h and fill in your Wi-Fi (gitignored)
 lib/
   BL0942/                   UART driver for the metering IC (protocol + calibration)
   StatusLED/                non-blocking GPIO2 status LED patterns
@@ -329,12 +408,14 @@ src/
     main.cpp                Example 1
   02_web_dashboard/
     main.cpp                Example 2: sensor slot map, routes, SSE push
+    wifi_portal.h/.cpp      NVS credentials + captive-portal fallback
     dashboard_html.h        the dashboard page
     settings_html.h         the /settings sensor setup page
+    wifi_html.h             the /wifi setup page
     thermal_js.h            shared thermal colour ramp, served at /thermal.js
 ```
 
-The two `*_html.h` files hold complete pages as `PROGMEM` string literals. That
+The three `*_html.h` files hold complete pages as `PROGMEM` string literals. That
 keeps the firmware a single binary with no filesystem image to flash separately,
 at the cost of a reflash to change the UI.
 
