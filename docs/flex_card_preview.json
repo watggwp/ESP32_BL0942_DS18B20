@@ -1,0 +1,122 @@
+{
+  "type": "bubble",
+  "body": {
+    "type": "box",
+    "layout": "vertical",
+    "paddingAll": "0px",
+    "backgroundColor": "#FFFFFF",
+    "contents": [
+      {
+        "type": "box",
+        "layout": "vertical",
+        "paddingAll": "20px",
+        "background": {
+          "type": "linearGradient",
+          "angle": "135deg",
+          "startColor": "#FF512F",
+          "endColor": "#DD2476"
+        },
+        "contents": [
+          {
+            "type": "box",
+            "layout": "baseline",
+            "contents": [
+              { "type": "text", "text": "🔥", "size": "sm", "color": "#FFFFFF", "flex": 0 },
+              { "type": "text", "text": "TEMPERATURE HIGH", "size": "sm", "color": "#FFFFFFCC", "weight": "bold", "margin": "sm" }
+            ]
+          },
+          {
+            "type": "text",
+            "margin": "md",
+            "adjustMode": "shrink-to-fit",
+            "contents": [
+              { "type": "span", "text": "72.4", "size": "4xl", "weight": "bold", "color": "#FFFFFF" },
+              { "type": "span", "text": " ", "size": "xl", "color": "#FFFFFFCC" },
+              { "type": "span", "text": "°C", "size": "xl", "weight": "bold", "color": "#FFFFFFCC" }
+            ]
+          },
+          {
+            "type": "box",
+            "layout": "vertical",
+            "margin": "md",
+            "cornerRadius": "14px",
+            "backgroundColor": "#FFFFFF2E",
+            "paddingAll": "7px",
+            "paddingStart": "13px",
+            "paddingEnd": "13px",
+            "contents": [
+              { "type": "text", "text": "▲ 12.4 °C over the limit", "size": "xs", "color": "#FFFFFF", "weight": "bold", "wrap": true }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "box",
+        "layout": "vertical",
+        "paddingAll": "20px",
+        "contents": [
+          {
+            "type": "box",
+            "layout": "horizontal",
+            "height": "8px",
+            "backgroundColor": "#EDF1F7",
+            "cornerRadius": "4px",
+            "contents": [
+              {
+                "type": "box",
+                "layout": "vertical",
+                "width": "100%",
+                "backgroundColor": "#FF512F",
+                "cornerRadius": "4px",
+                "contents": [ { "type": "filler" } ]
+              }
+            ]
+          },
+          { "type": "text", "text": "limit 60.0 °C", "size": "xxs", "color": "#8A94A6", "margin": "sm", "align": "end", "wrap": true },
+          {
+            "type": "box",
+            "layout": "vertical",
+            "margin": "lg",
+            "spacing": "sm",
+            "contents": [
+              {
+                "type": "box",
+                "layout": "horizontal",
+                "backgroundColor": "#F5F7FA",
+                "cornerRadius": "10px",
+                "paddingAll": "11px",
+                "contents": [
+                  { "type": "text", "text": "Slot 3  หม้อแปลง", "size": "sm", "color": "#8A94A6", "flex": 1, "wrap": true },
+                  { "type": "text", "text": "72.4°C", "size": "sm", "color": "#1F2430", "weight": "bold", "align": "end", "flex": 0 }
+                ]
+              },
+              {
+                "type": "box",
+                "layout": "horizontal",
+                "backgroundColor": "#F5F7FA",
+                "cornerRadius": "10px",
+                "paddingAll": "11px",
+                "contents": [
+                  { "type": "text", "text": "Slot 7  มอเตอร์", "size": "sm", "color": "#8A94A6", "flex": 1, "wrap": true },
+                  { "type": "text", "text": "65.1°C", "size": "sm", "color": "#1F2430", "weight": "bold", "align": "end", "flex": 0 }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "box",
+        "layout": "horizontal",
+        "backgroundColor": "#F7F9FC",
+        "paddingAll": "14px",
+        "paddingStart": "20px",
+        "paddingEnd": "20px",
+        "contents": [
+          { "type": "text", "text": "esp32-powermeter", "size": "xxs", "color": "#8A94A6", "flex": 1, "wrap": true },
+          { "type": "text", "text": "14 Aug 16:19", "size": "xxs", "color": "#8A94A6", "align": "end", "flex": 0 }
+        ]
+      }
+    ]
+  }
+}

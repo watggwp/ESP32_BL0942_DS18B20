@@ -22,6 +22,7 @@
 #include "config.h"
 #include "BL0942.h"
 #include "StatusLED.h"
+#include "alerts.h"
 #include "dashboard_html.h"
 #include "settings_html.h"
 #include "thermal_js.h"
@@ -331,7 +332,8 @@ static void setupRoutes() {
         });
     server.addHandler(sensorHandler);
 
-    WiFiPortal::registerRoutes(server);   // /wifi, /api/wifi*, captive-portal catch-all
+    WiFiPortal::registerRoutes(server);   // /api/wifi*, captive-portal catch-all
+    Alerts::registerRoutes(server);       // /api/alerts, /api/alerts/test
 
     server.addHandler(&events);
     server.begin();
@@ -365,6 +367,7 @@ void setup() {
     sensors.requestTemperatures();
 
     WiFiPortal::begin(DEVICE_HOSTNAME, [] { led.update(); });
+    Alerts::begin();   // after Wi-Fi, so SNTP has somewhere to send its query
     setupRoutes();
 
     lastRead = lastEnergyReadMs = lastPersist = millis();
@@ -413,21 +416,30 @@ void loop() {
     doc["cfg"] = configVersion;   // pages refetch their labels when this moves
 
     // Reads the conversion started on the previous cycle, so this returns
-    // immediately instead of blocking for the 750ms it takes to run.
+    // immediately instead of blocking for the 750ms it takes to run. Kept in a
+    // plain array as well as the JSON, because the alert engine judges the same
+    // numbers the page is about to draw -- one read, one truth.
+    float tempC[DS18B20_COUNT];
     JsonArray temps = doc["temps"].to<JsonArray>();
     for (uint8_t i = 0; i < slotCount; i++) {
-        if (!slots[i].online) {
-            temps.add(nullptr);
-            continue;
-        }
-        float c = sensors.getTempC(slots[i].addr);
+        float c = slots[i].online ? sensors.getTempC(slots[i].addr) : DEVICE_DISCONNECTED_C;
         if (c == DEVICE_DISCONNECTED_C) {
+            tempC[i] = NAN;
             temps.add(nullptr);
         } else {
+            tempC[i] = c;
             temps.add(c);
         }
     }
     sensors.requestTemperatures();   // start the next one; ready a second from now
+
+    // Queues text at most; the TLS handshake happens on its own task so nothing
+    // here waits on the network.
+    Alerts::evaluate(ok, lastSample.voltageV, lastSample.currentA, lastSample.activePowerW,
+                     lastSample.frequencyHz, tempC, slotCount,
+                     [](uint8_t slot) -> const char * {
+                         return slot < slotCount ? slots[slot].name : "";
+                     });
 
     String payload;
     serializeJson(doc, payload);

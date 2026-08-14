@@ -47,6 +47,54 @@
 #define WIFI_PORTAL_AP_PREFIX   "P1-Setup"  // AP name gets "-<last 2 MAC bytes>"
 #define WIFI_PORTAL_AP_PASSWORD ""     // <8 chars = open network (portal is local-only)
 
+// ---- LINE alerts (example 2) ---------------------------------------------------
+// Pushes a LINE message when a reading leaves its band. The channel access token,
+// the destination ID and every threshold are entered at /settings and live in NVS
+// -- nothing about your LINE account is compiled in. What lives here is the
+// alert ENGINE's behaviour, which is not something an operator should be tuning
+// from a phone.
+//
+// LINE Notify is gone (the service shut down on 31 March 2025), so this talks to
+// the Messaging API: create a LINE Official Account, then paste its channel
+// access token and your user/group ID into the Alerts tab.
+//
+// QUOTA IS THE REAL LIMIT, not flash. A LINE OA on the free plan sends only a few
+// hundred messages a month and pushes count against it, so a reading hovering on
+// a threshold could burn a month of quota in an afternoon. Three things stop that:
+// a reading must stay out of range for CONFIRM_SAMPLES before anything is sent, it
+// must come back a full hysteresis margin inside before the alert can arm again,
+// and each alert has its own cooldown plus a shared daily cap.
+#define ALERT_CONFIRM_SAMPLES 5      // consecutive bad reads before an alert fires
+#define ALERT_CLEAR_SAMPLES   5      // consecutive good reads before it clears
+#define ALERT_HYST_TEMP_C     2.0f   // how far back inside the band a value must
+#define ALERT_HYST_VOLT_V     5.0f   // come before that alert can fire again --
+#define ALERT_HYST_FREQ_HZ    0.2f   // this is what stops a value sitting exactly
+#define ALERT_HYST_AMP_A      0.5f   // on the limit from flapping on every sample
+#define ALERT_HYST_WATT_W     100.0f
+#define ALERT_MIN_FREE_HEAP   60000  // skip the push below this -- a TLS handshake
+                                     // needs room and a failed one is worse than
+                                     // a late message
+#define ALERT_TASK_STACK      8192   // bytes; mbedTLS handshakes are stack-hungry
+
+// First-boot defaults for the thresholds. Everything here is editable at
+// /settings afterwards; these values only seed a board that has never been set up.
+#define ALERT_DEF_TEMP_MAX     60.0f
+#define ALERT_DEF_VOLT_MIN    200.0f
+#define ALERT_DEF_VOLT_MAX    250.0f
+#define ALERT_DEF_FREQ_MIN     49.0f
+#define ALERT_DEF_FREQ_MAX     51.0f
+#define ALERT_DEF_AMP_MAX      20.0f
+#define ALERT_DEF_WATT_MAX   4000.0f
+#define ALERT_DEF_COOLDOWN_MIN   15  // minimum minutes between messages per alert
+#define ALERT_DEF_DAILY_CAP      20  // hard stop for one calendar day
+
+// ---- Clock (example 2) ---------------------------------------------------------
+// Alerts carry a wall-clock time, which uptime cannot give. Also what the daily
+// message cap counts days against.
+#define NTP_SERVER_1 "pool.ntp.org"
+#define NTP_SERVER_2 "time.google.com"
+#define NTP_TZ       "ICT-7"   // Thailand, UTC+7, no DST (POSIX TZ: sign inverted)
+
 // ---- Dashboard thermal colour range (example 2) -------------------------------
 // Ends of the thermal ramp on the temperature cards: MIN and below is the coldest
 // blue, MAX and above is deep red. Served to the page via /api/sensors, so this

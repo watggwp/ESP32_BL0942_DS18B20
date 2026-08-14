@@ -114,6 +114,25 @@ input:focus{outline:none;border-color:var(--accent)}
 .erow{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
 .eval{font-size:1.6rem;font-weight:800;color:var(--accent2);font-variant-numeric:tabular-nums}
 
+/* --- Alerts tab --- */
+input[type=checkbox]{width:auto;margin:0;accent-color:var(--accent)}
+.sw{display:inline-flex;align-items:center;gap:7px;margin:0;text-transform:none;letter-spacing:0;
+  font-size:.78rem;color:var(--muted);cursor:pointer}
+.lim{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;padding:11px 0}
+.lim+.lim{border-top:1px solid var(--border)}
+.lim .nm{display:flex;align-items:center;gap:9px;font-size:.9rem}
+.lim .in{display:flex;gap:7px;align-items:center;color:var(--muted);font-size:.74rem;flex-wrap:wrap;
+  justify-content:flex-end}
+.lim input[type=number]{width:86px}
+.lim.off{opacity:.45}
+.err{margin-top:12px;padding:10px 12px;border-radius:10px;background:rgba(239,107,107,.09);
+  border:1px solid var(--bad);color:var(--bad);font-size:.78rem;line-height:1.5;
+  font-family:ui-monospace,SFMono-Regular,Consolas,monospace;word-break:break-word}
+@media(max-width:520px){
+  .lim{grid-template-columns:1fr}
+  .lim .in{justify-content:flex-start}
+}
+
 /* --- Wi-Fi tab --- */
 .state{display:flex;align-items:center;gap:10px;font-size:.95rem;font-weight:600}
 .dot{width:9px;height:9px;border-radius:50%;background:var(--muted);flex:none}
@@ -168,6 +187,7 @@ footer{margin-top:22px;color:var(--muted);font-size:.75rem;text-align:center}
 <div class="tabs">
   <button class="tab on" data-tab="sensors">&#127777; Sensors</button>
   <button class="tab" data-tab="calibration">&#9889; Calibration</button>
+  <button class="tab" data-tab="alerts">&#128276; Alerts</button>
   <button class="tab" data-tab="wifi">&#128246; Wi-Fi</button>
 </div>
 
@@ -233,6 +253,79 @@ footer{margin-top:22px;color:var(--muted);font-size:.75rem;text-align:center}
   </div>
 </div>
 
+<div class="panel" id="p-alerts">
+  <div class="card">
+    <h2>LINE connection</h2>
+    <div class="tip" style="margin-bottom:14px">LINE Notify was shut down on 31 March 2025, so this uses the
+      <b>Messaging API</b> instead: create a LINE Official Account, copy its <b>channel access token</b>, and
+      paste the <b>user or group ID</b> the messages should go to. The board talks to LINE directly &mdash;
+      no server in between.</div>
+    <div class="field">
+      <label for="atoken">Channel access token</label>
+      <input id="atoken" type="password" maxlength="290" autocomplete="off"
+             placeholder="paste to change it">
+    </div>
+    <div class="field">
+      <label for="ato">Destination ID &mdash; user (U&hellip;), group (C&hellip;) or room (R&hellip;)</label>
+      <input id="ato" maxlength="60" autocomplete="off" spellcheck="false" placeholder="U1234abcd&hellip;">
+    </div>
+    <div class="actions" style="margin-top:16px">
+      <span class="tip" id="astat">&mdash;</span>
+      <button class="btn" id="atest">Send test message</button>
+    </div>
+    <div class="err" id="aerr" style="display:none"></div>
+  </div>
+
+  <div class="card">
+    <h2>What to watch <label class="sw"><input type="checkbox" id="aon"> alerts enabled</label></h2>
+
+    <div class="lim" id="limTemp">
+      <div class="nm"><input type="checkbox" id="tempOn"> &#127777; Temperature</div>
+      <div class="in">above <input id="tempMax" type="number" step="0.5"> &deg;C</div>
+    </div>
+    <div class="lim" id="limVolt">
+      <div class="nm"><input type="checkbox" id="voltOn"> &#128267; Voltage</div>
+      <div class="in">below <input id="voltMin" type="number" step="1">
+        &nbsp;above <input id="voltMax" type="number" step="1"> V</div>
+    </div>
+    <div class="lim" id="limFreq">
+      <div class="nm"><input type="checkbox" id="freqOn"> &#128260; Frequency</div>
+      <div class="in">below <input id="freqMin" type="number" step="0.1">
+        &nbsp;above <input id="freqMax" type="number" step="0.1"> Hz</div>
+    </div>
+    <div class="lim" id="limAmp">
+      <div class="nm"><input type="checkbox" id="ampOn"> &#9889; Current</div>
+      <div class="in">above <input id="ampMax" type="number" step="0.1"> A</div>
+    </div>
+    <div class="lim" id="limWatt">
+      <div class="nm"><input type="checkbox" id="wattOn"> &#128202; Power</div>
+      <div class="in">above <input id="wattMax" type="number" step="50"> W</div>
+    </div>
+
+    <div class="tip" style="margin-top:14px">A reading has to stay outside its limit for several seconds
+      running before anything is sent, and has to come back a margin <i>inside</i> the limit before that
+      alert can fire again. That is what stops a value sitting exactly on the threshold from messaging you
+      every second. Temperatures that cross together are reported as one message.</div>
+  </div>
+
+  <div class="card">
+    <h2>Message budget</h2>
+    <div class="knobs">
+      <div class="knob"><label for="cooldown">Cooldown (min)</label><input id="cooldown" type="number" min="1" step="1"></div>
+      <div class="knob"><label for="dailyCap">Max per day</label><input id="dailyCap" type="number" min="1" step="1"></div>
+      <label class="sw" style="padding-bottom:10px"><input type="checkbox" id="onRecover"> tell me when it goes back to normal</label>
+    </div>
+    <div class="tip" style="margin-top:12px">A LINE Official Account on the free plan only sends a few hundred
+      messages a month, and these pushes count against that. <b>Cooldown</b> is the least time between two
+      messages from the same alert; <b>max per day</b> is a hard stop. Recovery notices are useful but they
+      double the traffic &mdash; turn them off if the quota is tight.</div>
+    <div class="actions" style="margin-top:16px">
+      <span></span>
+      <button class="btn primary" id="asave">Save alert settings</button>
+    </div>
+  </div>
+</div>
+
 <div class="panel" id="p-wifi">
   <div class="card">
     <h2>Status</h2>
@@ -290,7 +383,7 @@ function toast(msg){
 }
 
 // ---------------------------------------------------------------- tabs
-const TABS = ['sensors','calibration','wifi'];
+const TABS = ['sensors','calibration','alerts','wifi'];
 
 function showTab(id){
   if(TABS.indexOf(id) < 0) id = 'sensors';
@@ -405,6 +498,105 @@ $('resetEnergy').addEventListener('click', ()=>{
   fetch('/api/energy/reset', {method:'POST'})
     .then(()=>toast('Energy counter reset'))
     .catch(()=>toast('Reset failed'));
+});
+
+// ---------------------------------------------------------------- alerts
+const LIMITS = [
+  ['tempOn','limTemp',['tempMax']],
+  ['voltOn','limVolt',['voltMin','voltMax']],
+  ['freqOn','limFreq',['freqMin','freqMax']],
+  ['ampOn', 'limAmp', ['ampMax']],
+  ['wattOn','limWatt',['wattMax']]
+];
+
+function paintLimits(){
+  LIMITS.forEach(([on, box, fields])=>{
+    const live = $(on).checked;
+    $(box).classList.toggle('off', !live);
+    fields.forEach(f=>{ $(f).disabled = !live; });
+  });
+}
+LIMITS.forEach(([on])=>$(on).addEventListener('change', paintLimits));
+
+function alertStatus(d){
+  const bits = [];
+  bits.push(d.tokenSet ? 'token saved' : 'no token yet');
+  bits.push(d.clockOk ? ('clock ' + d.now) : 'clock not synced');
+  bits.push(d.sentToday + '/' + d.dailyCap + ' delivered today');
+  if(typeof d.lastCode === 'number') bits.push('last push HTTP ' + d.lastCode);
+  $('astat').textContent = bits.join(' · ');
+  // What LINE actually objected to, in its own words -- an HTTP number on its
+  // own sends people to a serial monitor to find out what it meant.
+  const err = $('aerr');
+  err.textContent = d.lastError || '';
+  err.style.display = d.lastError ? 'block' : 'none';
+}
+
+function loadAlerts(){
+  fetch('/api/alerts').then(r=>r.json()).then(d=>{
+    $('aon').checked = d.enabled;
+    $('onRecover').checked = d.onRecover;
+    $('cooldown').value = d.cooldown;
+    $('dailyCap').value = d.dailyCap;
+    ['tempOn','voltOn','freqOn','ampOn','wattOn'].forEach(k=>{ $(k).checked = d[k]; });
+    ['tempMax','voltMin','voltMax','freqMin','freqMax','ampMax','wattMax'].forEach(k=>{ $(k).value = d[k]; });
+    $('ato').value = d.to || '';
+    // The board never sends the token back, so the field stays empty and only
+    // means something when someone types in it.
+    $('atoken').placeholder = d.tokenSet ? 'saved — paste a new one to replace it' : 'paste the channel access token';
+    paintLimits();
+    alertStatus(d);
+  }).catch(()=>toast('Could not read the alert settings'));
+}
+
+function saveAlerts(){
+  const num = id => parseFloat($(id).value);
+  const body = {
+    enabled: $('aon').checked,
+    onRecover: $('onRecover').checked,
+    cooldown: parseInt($('cooldown').value, 10),
+    dailyCap: parseInt($('dailyCap').value, 10),
+    to: $('ato').value.trim(),
+    tempOn: $('tempOn').checked, tempMax: num('tempMax'),
+    voltOn: $('voltOn').checked, voltMin: num('voltMin'), voltMax: num('voltMax'),
+    freqOn: $('freqOn').checked, freqMin: num('freqMin'), freqMax: num('freqMax'),
+    ampOn:  $('ampOn').checked,  ampMax:  num('ampMax'),
+    wattOn: $('wattOn').checked, wattMax: num('wattMax')
+  };
+  if(Object.values(body).some(v=>typeof v === 'number' && !isFinite(v))){
+    toast('Every threshold needs a number');
+    return;
+  }
+  if(body.voltMin >= body.voltMax || body.freqMin >= body.freqMax){
+    toast('The low limit must be below the high one');
+    return;
+  }
+  if(body.enabled && !body.to){ toast('A destination ID is required'); return; }
+  // Only sent when someone actually typed one -- an empty field means keep.
+  const tok = $('atoken').value.trim();
+  if(tok) body.token = tok;
+
+  $('asave').disabled = true;
+  fetch('/api/alerts', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)})
+    .then(r=>r.json()).then(d=>{
+      $('asave').disabled = false;
+      if(!d.ok){ toast('Failed: ' + (d.error||'rejected')); return; }
+      $('atoken').value = '';
+      toast('Alert settings saved');
+      loadAlerts();
+    }).catch(()=>{ $('asave').disabled = false; toast('Save failed'); });
+}
+
+$('asave').addEventListener('click', saveAlerts);
+$('atest').addEventListener('click', ()=>{
+  $('atest').disabled = true;
+  fetch('/api/alerts/test', {method:'POST'}).then(r=>r.json()).then(d=>{
+    $('atest').disabled = false;
+    // Queued, not delivered: the board answers before the handshake even starts,
+    // so the honest thing to report is that it was sent, then show the result.
+    toast(d.ok ? 'Test message queued — watch your LINE' : ('Failed: ' + (d.error||'rejected')));
+    setTimeout(loadAlerts, 4000);
+  }).catch(()=>{ $('atest').disabled = false; toast('Could not reach the board'); });
 });
 
 // ---------------------------------------------------------------- wi-fi
@@ -571,6 +763,7 @@ showTab((location.hash || '').replace('#','') ||
         (location.pathname.indexOf('/wifi') === 0 ? 'wifi' : 'sensors'));
 loadSensors();
 loadCalibration();
+loadAlerts();
 </script>
 </body>
 </html>

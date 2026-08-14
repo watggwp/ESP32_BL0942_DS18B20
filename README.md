@@ -120,6 +120,7 @@ once lives behind `/settings`, as three tabs of one page:
 |---|---|
 | **Sensors** | fix each DS18B20 to a slot and name it (below), with live temperatures beside each row |
 | **Calibration** | tune BL0942 kI/kV/kP against a real meter next to a live V/A/W readout; reset the kWh total |
+| **Alerts** | push a LINE message when temperature, voltage, frequency, current or power leaves its band (below) |
 | **Wi-Fi** | join a new network from a phone, see what the board is connected to (below) |
 
 `/wifi` opens that same page on the Wi-Fi tab — the captive portal and the
@@ -264,12 +265,72 @@ AP is off-channel, so a failed request there is the normal case, not an error.
 > The same off-channel effect means a dashboard open on the LAN may drop one SSE
 > beat while `/wifi` rescans. It reconnects on its own.
 
+### LINE alerts
+
+The board pushes a LINE message when a reading leaves its band. **LINE Notify is
+gone** — the service shut down on 31 March 2025, so anything built on
+`notify-api.line.me` no longer works. This talks to the **Messaging API**
+instead: create a LINE Official Account, then paste its channel access token and
+a destination ID (`U…` user, `C…` group, `R…` room) into the Alerts tab. Nothing
+about your LINE account is compiled in — token, destination and every threshold
+live in NVS.
+
+Watched, each switchable on its own: temperature per slot, voltage (low *and*
+high), frequency (low and high), current, active power.
+
+Messages go out as a **Flex Message** — a card laid out entirely from JSON, which
+is the only way to get something designed onto a phone from a board that has
+nowhere to host an image. A gradient header carries the reading at display size,
+a chip says how far past the limit it went, a meter bar shows it against that
+limit, and the readings behind it follow as rows. Red-magenta for a fault,
+teal-green for a recovery, so the two are told apart before a word is read.
+
+`docs/flex_card_preview.json` is the same card as static JSON — paste it into the
+[Flex Message Simulator](https://developers.line.biz/flex-simulator/) to see it,
+or to try a different layout before changing `buildBubble()` in `alerts.cpp`.
+
+**Quota is the binding constraint, not flash.** A LINE Official Account on the
+free plan sends only a few hundred messages a month and pushes count against it,
+so a reading hovering on a threshold could spend a month's allowance in an
+afternoon. Four things prevent that:
+
+| Guard | Effect | Where |
+|---|---|---|
+| Debounce | a reading must be out of range for `ALERT_CONFIRM_SAMPLES` reads (~5 s) before anything fires | `config.h` |
+| Hysteresis | it must come back a margin *inside* the limit before that alert can fire again | `config.h` |
+| Cooldown | minimum minutes between two messages from the same alert | Alerts tab |
+| Daily cap | a hard stop per calendar day | Alerts tab |
+
+Temperatures that cross together are reported as **one** message — nine probes on
+one heatsink tend to go over at the same moment, and nine separate pushes for one
+event is exactly how the quota disappears.
+
+Two more things worth knowing:
+
+- **A failed meter read holds the electrical alerts still.** A BL0942 that will
+  not answer reports zeros, which is indistinguishable from a total power
+  failure. The board knows the reading is *missing*, not that the voltage is
+  gone, so it says nothing rather than crying wolf.
+- **The TLS handshake runs on its own FreeRTOS task.** It blocks for a second or
+  more; on the loop task that would stall the SSE push and the portal DNS, and in
+  a request handler it would stall every open browser. `evaluate()` only queues
+  text.
+
+> The connection to `api.line.me` is TLS but the certificate is **not verified**
+> (`setInsecure()`). Traffic is encrypted, but a machine positioned to intercept
+> it could impersonate LINE and collect the token. Pin a root CA in
+> `alerts.cpp` if the board sits somewhere that matters.
+
+Alerts carry a wall-clock time, so the firmware runs an SNTP client
+(`NTP_SERVER_1`, `NTP_TZ` in `config.h`). Before the first sync a message falls
+back to `uptime 3h12m` rather than claiming a time it does not know.
+
 ### HTTP endpoints
 
 | Method | Path | Purpose |
 |---|---|---|
 | GET | `/` | dashboard page (redirects to `/wifi` in setup mode) |
-| GET | `/settings` | settings page — Sensors / Calibration / Wi-Fi tabs |
+| GET | `/settings` | settings page — Sensors / Calibration / Alerts / Wi-Fi tabs |
 | GET | `/wifi` | the same page, opened on the Wi-Fi tab |
 | GET | `/thermal.js` | shared colour-ramp helpers |
 | GET | `/events` | Server-Sent Events stream of live samples |
@@ -279,6 +340,9 @@ AP is off-channel, so a failed request there is the normal case, not an error.
 | GET | `/api/sensors` | `{version, fw, build, max, tmin, tmax, sensors:[{slot, addr, name, online}]}` |
 | POST | `/api/sensors` | `{"sensors":[{"addr","name"}]}` in slot order, persists to NVS |
 | POST | `/api/sensors/rescan` | re-run the OneWire scan and append new sensors |
+| GET | `/api/alerts` | thresholds + `{tokenSet, sentToday, clockOk, now, lastCode}` — **never the token itself** |
+| POST | `/api/alerts` | set thresholds; `token` is only written when non-empty, so a blank field keeps the saved one |
+| POST | `/api/alerts/test` | queue a test LINE message |
 | GET | `/api/wifi` | `{portal, connected, ssid, ip, rssi, host, ap, saved, fw, build}` |
 | POST | `/api/wifi` | `{"ssid","pass"}`, persists to NVS and reboots |
 | GET | `/api/wifi/scan` | last scan result, or `{"scanning":true}`; `?force=1` restarts it |
@@ -334,6 +398,14 @@ All of `include/config.h`, shared by both environments:
 | `STATUS_LED_PIN` | 2 | status LED |
 | `STATUS_LED_ACTIVE_HIGH` | `true` | invert for boards that sink the LED |
 | `SENSOR_READ_INTERVAL_MS` | 1000 | sampling / SSE push period |
+| `ALERT_CONFIRM_SAMPLES` | 5 | consecutive out-of-range reads before an alert fires |
+| `ALERT_CLEAR_SAMPLES` | 5 | consecutive in-range reads before it clears |
+| `ALERT_HYST_*` | 2 °C / 5 V / 0.2 Hz / 0.5 A / 100 W | how far back inside the band a value must come before that alert can fire again |
+| `ALERT_MIN_FREE_HEAP` | 60000 | skip the push below this — a TLS handshake needs room |
+| `ALERT_TASK_STACK` | 8192 | sender task stack; mbedTLS handshakes are stack-hungry |
+| `ALERT_DEF_*` | 60 °C, 200–250 V, 49–51 Hz, 20 A, 4000 W | first-boot thresholds; editable at `/settings` afterwards |
+| `NTP_SERVER_1` / `NTP_SERVER_2` | pool.ntp.org / time.google.com | clock for alert timestamps and the daily cap |
+| `NTP_TZ` | `"ICT-7"` | POSIX TZ — Thailand, UTC+7, no DST (sign is inverted) |
 | `TEMP_COLOR_MIN_C` | 10 | coldest end of the thermal ramp |
 | `TEMP_COLOR_MAX_C` | 80 | hottest end (deep red at or above) |
 | `DEVICE_HOSTNAME` | `"esp32-powermeter"` | mDNS name, `http://esp32-powermeter.local/` |
@@ -342,7 +414,9 @@ All of `include/config.h`, shared by both environments:
 | `WIFI_PORTAL_AP_PASSWORD` | `""` | under 8 characters means an open network |
 
 Wi-Fi credentials are not in this table, or anywhere else in the source: they
-are entered at `/wifi` and stored in NVS.
+are entered at `/wifi` and stored in NVS. The same goes for the LINE channel
+access token and destination — `/settings` writes both, and the API never reads
+them back out.
 
 ### What is stored in flash (NVS)
 
@@ -351,6 +425,7 @@ are entered at `/wifi` and stored in NVS.
 | `meter` | `kI`, `kV`, `kP`, `kwh` | on calibration save, energy reset, and every 60 s |
 | `sensors` | `map` (JSON: addresses + names in slot order) | on save from `/settings` |
 | `wifi` | `ssid`, `pass` | on save or forget from `/wifi` |
+| `alerts` | thresholds, `to`, `token` | on save from the Alerts tab |
 
 `pio run -t upload` does **not** touch NVS — it only rewrites the app partition,
 so calibration, sensor names and the Wi-Fi network all survive reflashing. You
@@ -423,8 +498,9 @@ src/
   02_web_dashboard/
     main.cpp                Example 2: sensor slot map, routes, SSE push
     wifi_portal.h/.cpp      NVS credentials + captive-portal fallback (API only)
+    alerts.h/.cpp           threshold engine + LINE Messaging API sender task
     dashboard_html.h        the read-only dashboard page
-    settings_html.h         /settings and /wifi -- sensors, calibration, Wi-Fi tabs
+    settings_html.h         /settings and /wifi -- sensors, calibration, alerts, Wi-Fi
     thermal_js.h            shared thermal colour ramp, served at /thermal.js
 ```
 
