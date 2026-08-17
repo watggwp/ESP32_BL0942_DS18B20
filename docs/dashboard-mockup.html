@@ -1,0 +1,698 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ESP32 Power &amp; Temperature Monitor</title>
+<style>
+:root{
+  --bg:#0b0f17; --panel:#121826; --panel2:#161d2e; --border:#232b3d;
+  --text:#e8ecf4; --muted:#8a93a6;
+  --accent:#5ee1c9; --accent2:#8b7bf0; --warn:#f2b84b; --bad:#ef6b6b;
+  --radius:16px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  overflow-x:hidden;}
+body{padding:20px;max-width:1200px;margin:0 auto;}
+header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:20px;}
+h1{font-size:1.3rem;font-weight:700;margin:0;letter-spacing:.2px}
+h1 span{color:var(--accent)}
+.status{display:flex;align-items:center;gap:8px;font-size:.85rem;color:var(--muted)}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--bad);box-shadow:0 0 8px var(--bad);transition:.3s}
+.dot.live{background:var(--accent);box-shadow:0 0 10px var(--accent)}
+.hnav{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.navbtn{display:inline-flex;align-items:center;gap:6px;background:var(--panel2);
+  border:1px solid var(--border);color:var(--text);padding:8px 14px;border-radius:10px;
+  font-size:.82rem;text-decoration:none;white-space:nowrap;transition:.15s}
+.navbtn:hover{border-color:var(--accent);color:var(--accent)}
+
+.grid{display:grid;grid-template-columns:repeat(12,1fr);gap:16px;}
+.card{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--border);
+  border-radius:var(--radius);padding:18px;position:relative;overflow:hidden}
+.card h2{font-size:.78rem;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);margin:0 0 10px 0;font-weight:600}
+.card h2 .sub{text-transform:none;letter-spacing:0;font-weight:400;color:var(--muted);margin-left:8px}
+.cfglink{float:right;color:var(--muted);text-decoration:none;border-bottom:1px dotted var(--border);
+  text-transform:none;letter-spacing:0;font-weight:400}
+.cfglink:hover{color:var(--accent);border-bottom-color:var(--accent)}
+
+.hero{grid-column:span 5;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:280px}
+.hero canvas{width:100%;max-width:260px;height:auto}
+.hero .value{font-size:2.6rem;font-weight:800;margin-top:-6px}
+.hero .unit{color:var(--muted);font-size:.95rem;margin-top:2px}
+
+.stats{grid-column:span 7;display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.stat{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--border);
+  border-radius:var(--radius);padding:16px;text-align:center}
+.stat .icon{font-size:1.3rem;opacity:.85}
+.stat .val{font-size:1.7rem;font-weight:700;margin-top:6px}
+.stat .lbl{color:var(--muted);font-size:.78rem;text-transform:uppercase;letter-spacing:1px;margin-top:4px}
+
+.spark{grid-column:span 12}
+.spark canvas{width:100%;height:110px;display:block}
+
+.energy{grid-column:span 12;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+.energy .val{font-size:1.6rem;font-weight:800;color:var(--accent2)}
+
+.heatmap{grid-column:span 12}
+.hm-wrap{display:flex;flex-direction:column;align-items:center;margin-top:2px}
+.hm-plot{position:relative;width:100%;max-width:560px}
+/* pan-y, not none: the page must still scroll when a finger starts on the map */
+.hm-plot canvas{width:100%;aspect-ratio:4/3;display:block;border-radius:12px;
+  cursor:crosshair;touch-action:pan-y}
+.hm-note{color:var(--muted);font-size:.75rem;line-height:1.6;margin-top:12px;max-width:560px}
+.hm-note b{color:var(--text);font-weight:600}
+.scale{display:flex;align-items:center;gap:8px;margin-top:10px;color:var(--muted);font-size:.68rem;
+  font-variant-numeric:tabular-nums}
+.scalebar{flex:1;height:6px;border-radius:3px;display:block}
+
+.ttip{position:absolute;pointer-events:none;background:var(--panel2);border:1px solid var(--border);
+  border-radius:10px;padding:9px 11px;font-size:.72rem;opacity:0;transition:opacity .12s;
+  box-shadow:0 8px 26px rgba(0,0,0,.5);z-index:5;min-width:132px;left:0;top:0}
+.ttip.show{opacity:1}
+.ttip .tth{color:var(--muted);font-size:.66rem;margin-bottom:6px;font-variant-numeric:tabular-nums}
+.ttip .ttr{display:grid;grid-template-columns:12px auto 1fr;gap:8px;align-items:center}
+.ttip .ttk{height:2px;border-radius:1px;display:block;background:var(--muted)}
+.ttip .ttv{color:var(--text);font-weight:700;font-variant-numeric:tabular-nums;text-align:right}
+.ttip .ttn{color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+.temps{grid-column:span 12}
+.temps .row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:6px}
+.tcard{background:var(--panel2);border:1px solid var(--border);border-radius:12px;padding:12px;text-align:center;
+  transition:background-image .8s,border-color .8s,box-shadow .8s}
+.tcard .tv{font-size:1.25rem;font-weight:700;transition:color .8s}
+/* overflow-wrap: Thai has no spaces, so a name cannot line-break on its own and
+   would run straight out of a fixed-width grid cell */
+.tcard .tl{color:var(--muted);font-size:.72rem;margin-top:2px;text-transform:uppercase;letter-spacing:.5px;
+  overflow-wrap:anywhere}
+.tbar{height:5px;border-radius:3px;background:#232b3d;margin-top:8px;overflow:hidden}
+.tbar i{display:block;height:100%;width:0%;background:#4fa8f2;transition:width .8s,background .8s}
+.tcard.off{opacity:.35}
+
+footer{margin-top:22px;color:var(--muted);font-size:.75rem;text-align:center}
+@media(max-width:820px){.hero{grid-column:span 12}.stats{grid-column:span 12;grid-template-columns:repeat(3,1fr)}}
+@media(max-width:520px){.stats{grid-template-columns:repeat(2,1fr)}}
+/* Keep the temperature grid at 3 columns on a phone by tightening the cards
+   rather than reflowing them -- the 3x3 IS the mounting layout, at every width */
+@media(max-width:460px){
+  .temps .row{gap:8px}
+  .tcard{padding:10px 6px}
+  .tcard .tv{font-size:1rem}
+  .tcard .tl{font-size:.62rem;letter-spacing:0}
+}
+</style>
+
+<script>
+// ---------------------------------------------------------------------------
+// DEMO DATA SOURCE -- replaces the board. Nothing below this point exists in
+// the firmware; everything above and after it is the real dashboard, byte for
+// byte, so what is on screen is what a customer gets.
+// ---------------------------------------------------------------------------
+(function () {
+  // Tailor these to the site being shown. Names appear on the cards and in the
+  // thermal map tooltip; bases are the resting temperature of each probe, laid
+  // out in slot order (the page arranges them serpentine on its own).
+  var SIM_NAMES = ['หม้อแปลง A', 'หม้อแปลง B', 'บัสบาร์ L1',
+                   'เบรกเกอร์หลัก', 'จุดร้อน C', 'บัสบาร์ L2',
+                   'มอเตอร์ 1', 'มอเตอร์ 2', 'ตู้ควบคุม'];
+  var SIM_BASE  = [20, 31, 29,
+                   24, 41, 23,
+                   30, 33, 20];
+  var TMIN = 20, TMAX = 50;      // must match TEMP_COLOR_MIN_C / MAX_C
+  var NOMINAL_AMPS = 12.5;
+
+  var tick = 0;
+  var load = 0.55;               // fraction of nominal current
+  var energy = 51.4;            // kWh on the counter when the demo starts
+
+  function reading() {
+    tick++;
+    // A step every now and then, plus a slow wander in between: a flat line
+    // makes the sparkline and the gauge look broken rather than idle.
+    if (Math.random() < 0.02) load = 0.25 + Math.random() * 0.6;
+    load += (Math.random() - 0.5) * 0.02;
+    load = Math.max(0.05, Math.min(1, load));
+
+    var v = 229.5 + Math.sin(tick / 37) * 1.6 + (Math.random() - 0.5) * 0.4;
+    var i = NOMINAL_AMPS * load + (Math.random() - 0.5) * 0.05;
+    var p = v * i * 0.93;
+    var f = 50.0 + Math.sin(tick / 91) * 0.03 + (Math.random() - 0.5) * 0.01;
+    energy += p / 3600 / 1000;
+
+    // Probes track the load with a lag, so the thermal map warms up after a
+    // step instead of jumping with it -- which is what metal actually does.
+    var temps = SIM_BASE.map(function (base, n) {
+      return base + load * 14
+                  + Math.sin((tick + n * 40) / 120) * 1.2
+                  + (Math.random() - 0.5) * 0.15;
+    });
+
+    return {
+      v: v, i: i, p: p, f: f, e: energy,
+      noLoad: p < 8,
+      uptime: 4520000 + tick * 1000,
+      heap: 54000 + Math.round(Math.sin(tick / 15) * 900),
+      cfg: 1,
+      temps: temps
+    };
+  }
+
+  // ---- fake /api/* ---------------------------------------------------------
+  function json(obj) {
+    return Promise.resolve({ ok: true, json: function () { return Promise.resolve(obj); } });
+  }
+  window.fetch = function (url) {
+    url = String(url);
+    if (url.indexOf('/api/sensors') === 0) {
+      return json({
+        version: 1, max: 9, tmin: TMIN, tmax: TMAX,
+        fw: 'DEMO', build: 'simulated data',
+        sensors: SIM_NAMES.map(function (n, k) {
+          return { slot: k, addr: '28DEMO0000000' + k, name: n, online: true };
+        })
+      });
+    }
+    if (url.indexOf('/api/calibration') === 0) return json({ kI: 1.0, kV: 1.0, kP: 1.0 });
+    return json({ ok: true });
+  };
+
+  // ---- fake /events --------------------------------------------------------
+  window.EventSource = function () {
+    var self = this;
+    var handlers = [];
+    this.addEventListener = function (type, fn) { if (type === 'data') handlers.push(fn); };
+    this.close = function () { clearInterval(self._timer); };
+    function push() {
+      var payload = JSON.stringify(reading());
+      handlers.forEach(function (fn) { fn({ data: payload }); });
+    }
+    // A beat before "live" appears, so the connecting state is visible rather
+    // than flashing past -- it is part of what the product does.
+    setTimeout(function () {
+      if (self.onopen) self.onopen();
+      push();
+      self._timer = setInterval(push, 1000);
+    }, 500);
+  };
+})();
+</script>
+<style>
+/* Says what this is, in the one place nobody can crop out by accident. Leave it
+   on: a screenshot of this page is otherwise indistinguishable from a reading
+   off a real installation. */
+.demo-flag{display:inline-flex;align-items:center;gap:6px;background:#f2b84b1f;
+  border:1px solid #f2b84b;color:#f2b84b;padding:5px 11px;border-radius:999px;
+  font-size:.72rem;font-weight:700;letter-spacing:.6px;white-space:nowrap}
+</style>
+</head>
+<body>
+<header>
+  <h1>&#9889; ESP32 <span>Power</span> &amp; Temperature Monitor</h1>
+  <div class="hnav">
+    <span class="status"><span class="dot" id="dot"></span><span id="statusText">connecting&hellip;</span></span>
+    <a class="navbtn" href="#">&#9881;&#65039; Settings</a>
+  </div>
+</header>
+
+<div class="grid">
+  <div class="card hero">
+    <h2>Active Power</h2>
+    <canvas id="gauge" width="260" height="180"></canvas>
+    <div class="value" id="pVal">0</div>
+    <div class="unit">watts <span id="noLoad" style="color:var(--warn);display:none">&nbsp;&middot; no-load</span></div>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><div class="icon">&#128267;</div><div class="val" id="vVal">0.0</div><div class="lbl">Volts</div></div>
+    <div class="stat"><div class="icon">&#9889;</div><div class="val" id="iVal">0.000</div><div class="lbl">Amps</div></div>
+    <div class="stat"><div class="icon">&#128260;</div><div class="val" id="fVal">0.0</div><div class="lbl">Hertz</div></div>
+    <div class="stat"><div class="icon">&#128202;</div><div class="val" id="pfVal">&mdash;</div><div class="lbl">Apparent VA</div></div>
+    <div class="stat"><div class="icon">&#128267;</div><div class="val" id="heapVal">&mdash;</div><div class="lbl">Free Heap KB</div></div>
+    <div class="stat"><div class="icon">&#9200;</div><div class="val" id="upVal">&mdash;</div><div class="lbl">Uptime</div></div>
+  </div>
+
+  <div class="card spark">
+    <h2>Power History <span class="sub">last 90 s</span></h2>
+    <canvas id="sparkline"></canvas>
+  </div>
+
+  <div class="card energy">
+    <div><h2 style="margin-bottom:4px">Accumulated Energy</h2><div class="val" id="eVal">0.000 kWh</div></div>
+  </div>
+
+  <div class="card heatmap">
+    <h2>Thermal Map <span class="sub">serpentine &middot; 1 2 3 / 6 5 4 / 7 8 9</span>
+      <a class="cfglink" href="#">configure</a></h2>
+    <div class="hm-wrap">
+      <div class="hm-plot">
+        <canvas id="heatmap"></canvas>
+        <div class="ttip" id="hmTip"></div>
+        <div class="scale">
+          <span id="scaleMin">&mdash;</span>
+          <i class="scalebar" id="scaleBar"></i>
+          <span id="scaleMax">&mdash;</span>
+        </div>
+      </div>
+      <div class="hm-note">The nine circles are measured. Everything between them is
+        <b>interpolated</b> &mdash; a distance-weighted estimate, not a reading. It can never
+        invent a spot hotter than the hottest probe, but the further apart the probes sit,
+        the rougher the guess in between.</div>
+    </div>
+  </div>
+
+  <div class="card temps">
+    <h2>DS18B20 Temperatures <span class="sub">in mounting order</span>
+      <a class="cfglink" href="#">configure</a></h2>
+    <div class="row" id="tempRow"></div>
+  </div>
+
+</div>
+
+<footer>ESP32 &middot; BL0942 &middot; 9&times; DS18B20 &middot; <span id="fw" title="">firmware &mdash;</span></footer>
+
+<script>
+
+// Cold -> hot, the way a thermal camera reads: brightness and "heat" both climb
+// monotonically, and the ramp deliberately skips green. Green on a gauge reads
+// as "all good" no matter what number sits next to it, which is precisely the
+// wrong signal at 45 degrees on a bearing.
+var THERMAL_STOPS = [
+  [0.00,  47,  75, 143],   // deep blue
+  [0.20,  47, 143, 214],   // blue
+  [0.38,  79, 217, 208],   // cyan
+  [0.55, 255, 216,  77],   // yellow
+  [0.72, 255, 147,  38],   // orange
+  [0.87, 240,  82,  28],   // red-orange
+  [1.00, 192,  20,  20]    // deep red
+];
+
+// Legibility floor for text drawn in a ramp colour. Deep red is the whole point
+// of the hot end but it is unreadable on a dark card, so text gets blended
+// toward white until it clears this. Lower it for punchier numbers, at a cost.
+var THERMAL_TEXT_FLOOR = 0.45;
+
+function thermalClamp(t) { return t < 0 ? 0 : t > 1 ? 1 : t; }
+
+// Linear interpolation between the surrounding stops. Returns [r,g,b] floats.
+function thermalRamp(t) {
+  t = thermalClamp(t);
+  for (var i = 1; i < THERMAL_STOPS.length; i++) {
+    var a = THERMAL_STOPS[i - 1], b = THERMAL_STOPS[i];
+    if (t <= b[0]) {
+      var f = (t - a[0]) / (b[0] - a[0]);
+      return [a[1] + (b[1] - a[1]) * f,
+              a[2] + (b[2] - a[2]) * f,
+              a[3] + (b[3] - a[3]) * f];
+    }
+  }
+  var last = THERMAL_STOPS[THERMAL_STOPS.length - 1];
+  return [last[1], last[2], last[3]];
+}
+
+function thermalLum(c) {
+  return (0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]) / 255;
+}
+
+// Relative luminance is linear in each channel, so the blend factor that lands
+// exactly on the floor has a closed form -- no iterating toward it.
+function thermalReadable(c, floor) {
+  var L = thermalLum(c);
+  if (L >= floor) return c;
+  var f = (floor - L) / (1 - L);
+  return [c[0] + (255 - c[0]) * f,
+          c[1] + (255 - c[1]) * f,
+          c[2] + (255 - c[2]) * f];
+}
+
+function thermalCss(c, alpha) {
+  var r = c[0] | 0, g = c[1] | 0, b = c[2] | 0;
+  return alpha === undefined ? 'rgb(' + r + ',' + g + ',' + b + ')'
+                             : 'rgba(' + r + ',' + g + ',' + b + ',' + alpha + ')';
+}
+
+// CSS gradient built from the same stops, for the scale legend beside a chart.
+// A semantic-heat ramp is only readable with a scale to read it against, and
+// generating that scale from THERMAL_STOPS keeps it honest -- a hand-written
+// gradient would quietly stop matching the lines the first time a stop moves.
+function thermalGradientCss() {
+  var parts = [];
+  for (var i = 0; i < THERMAL_STOPS.length; i++) {
+    var s = THERMAL_STOPS[i];
+    parts.push(thermalCss([s[1], s[2], s[3]]) + ' ' + Math.round(s[0] * 100) + '%');
+  }
+  return 'linear-gradient(90deg,' + parts.join(',') + ')';
+}
+
+// Everything a card needs for one reading: t is the 0..1 position in the range.
+function thermalPaint(t) {
+  t = thermalClamp(t);
+  var vivid = thermalRamp(t);
+  return {
+    t: t,
+    vivid: thermalCss(vivid),
+    text: thermalCss(thermalReadable(vivid, THERMAL_TEXT_FLOOR)),
+    // Tint and border strengthen with heat; the glow only kicks in past the
+    // yellow stop so a room-temperature grid stays calm instead of all aglow.
+    tint: 'linear-gradient(180deg,' + thermalCss(vivid, (0.04 + 0.10 * t).toFixed(3)) +
+          ',' + thermalCss(vivid, (0.10 + 0.20 * t).toFixed(3)) + ')',
+    border: thermalCss(vivid, (0.30 + 0.45 * t).toFixed(3)),
+    glow: t > 0.55 ? '0 0 ' + (((t - 0.55) * 42) | 0) + 'px ' +
+                     thermalCss(vivid, (0.10 + 0.25 * t).toFixed(3)) : 'none'
+  };
+}
+
+</script>
+<script>
+const $ = id => document.getElementById(id);
+const gauge = $('gauge').getContext('2d');
+const spark = $('sparkline').getContext('2d');
+let history = [];
+const HISTORY_MAX = 90;
+
+let sensorNames = [], labelsDirty = false, cfgVersion = -1, lastTemps = null;
+let tMin = 10, tMax = 80;   // overwritten by /api/sensors
+
+let CHART_INK, CHART_SURFACE;
+(function readTokens(){
+  const cs = getComputedStyle(document.documentElement);
+  const pick = (n, f) => cs.getPropertyValue(n).trim() || f;
+  CHART_INK     = pick('--muted', '#8a93a6');
+  CHART_SURFACE = pick('--panel', '#121826');
+})();
+
+// Serpentine: row 1 runs right-to-left, so slot 4 is the RIGHT of the middle row
+// and slot 6 the left. Its own inverse, so it maps slot->position and back.
+function serp(i){
+  const row = Math.floor(i / 3);
+  return row * 3 + (row % 2 ? 2 - (i % 3) : i % 3);
+}
+
+function loadSensorConfig(){
+  fetch('/api/sensors').then(r=>r.json()).then(d=>{
+    sensorNames = (d.sensors||[]).map(s=>s.name||'');
+    if(d.fw){
+      $('fw').textContent = 'firmware v 2.2.3';
+      if(d.build) $('fw').title = 'built ' + d.build;
+    }
+    if(typeof d.tmin === 'number') tMin = d.tmin;
+    if(typeof d.tmax === 'number') tMax = d.tmax;
+    labelsDirty = true;
+    renderScale();
+    if(lastTemps){ renderTemps(lastTemps); drawHeatmap(); }
+  }).catch(()=>{});
+}
+
+function renderScale(){
+  $('scaleBar').style.background = thermalGradientCss();
+  $('scaleMin').textContent = tMin + '°C';
+  $('scaleMax').textContent = tMax + '°C';
+}
+
+function sensorLabel(i){ return sensorNames[i] || ('Sensor ' + (i + 1)); }
+
+function drawGauge(watts, maxWatts){
+  const c = $('gauge'); const w = c.width, h = c.height;
+  gauge.clearRect(0,0,w,h);
+  const cx = w/2, cy = h-10, r = 100;
+  const start = Math.PI, end = 0;
+  const frac = Math.max(0, Math.min(1, watts / maxWatts));
+
+  gauge.lineWidth = 16; gauge.lineCap = 'round';
+  gauge.strokeStyle = '#232b3d';
+  gauge.beginPath(); gauge.arc(cx, cy, r, start, end); gauge.stroke();
+
+  const grad = gauge.createLinearGradient(cx-r, cy, cx+r, cy);
+  grad.addColorStop(0, '#5ee1c9'); grad.addColorStop(.6, '#8b7bf0'); grad.addColorStop(1, '#ef6b6b');
+  gauge.strokeStyle = grad;
+  gauge.beginPath(); gauge.arc(cx, cy, r, start, start + (end-start)*frac); gauge.stroke();
+
+  gauge.fillStyle = '#8a93a6'; gauge.font = '11px sans-serif'; gauge.textAlign='center';
+  gauge.fillText('0', cx-r+4, cy+16);
+  gauge.fillText(maxWatts+'W', cx+r-14, cy+16);
+}
+
+function drawSpark(){
+  const c = $('sparkline'); const dpr = window.devicePixelRatio||1;
+  const cssW = c.clientWidth || 600, cssH = 110;
+  c.width = cssW*dpr; c.height = cssH*dpr;
+  spark.setTransform(dpr,0,0,dpr,0,0);
+  spark.clearRect(0,0,cssW,cssH);
+  if(history.length < 2) return;
+  const max = Math.max(10, ...history);
+  const min = 0;
+  const stepX = cssW / (HISTORY_MAX-1);
+  spark.beginPath();
+  history.forEach((v,i)=>{
+    const x = i*stepX;
+    const y = cssH - ((v-min)/(max-min||1))*(cssH-10) - 4;
+    i===0 ? spark.moveTo(x,y) : spark.lineTo(x,y);
+  });
+  spark.lineTo((history.length-1)*stepX, cssH);
+  spark.lineTo(0, cssH);
+  spark.closePath();
+  const fill = spark.createLinearGradient(0,0,0,cssH);
+  fill.addColorStop(0,'rgba(94,225,201,.35)'); fill.addColorStop(1,'rgba(94,225,201,0)');
+  spark.fillStyle = fill; spark.fill();
+
+  spark.beginPath();
+  history.forEach((v,i)=>{
+    const x = i*stepX;
+    const y = cssH - ((v-min)/(max-min||1))*(cssH-10) - 4;
+    i===0 ? spark.moveTo(x,y) : spark.lineTo(x,y);
+  });
+  spark.strokeStyle = '#5ee1c9'; spark.lineWidth = 2; spark.stroke();
+}
+
+function renderTemps(temps){
+  const row = $('tempRow');
+  // Cards sit in mounting order, so a card's place on screen is the probe's place
+  // on the machine. Only a full set of nine forms the serpentine 3x3.
+  const order = temps.length === 9 ? [0,1,2,3,4,5,6,7,8].map(serp) : temps.map((_,i)=>i);
+  if(row.children.length !== temps.length || labelsDirty){
+    labelsDirty = false;
+    row.innerHTML = order.map(s=>`
+      <div class="tcard" id="tc${s}">
+        <div class="tv" id="tv${s}">&mdash;</div>
+        <div class="tl" id="tn${s}"></div>
+        <div class="tbar"><i id="ti${s}"></i></div>
+      </div>`).join('');
+    // textContent, not markup: sensor names are whatever the user typed
+    order.forEach(s=>{ $('tn'+s).textContent = sensorLabel(s); });
+  }
+  temps.forEach((c,i)=>{
+    const card = $('tc'+i), val = $('tv'+i), bar = $('ti'+i);
+    if(!card) return;
+    if(c===null){
+      card.classList.add('off');
+      card.style.backgroundImage = ''; card.style.borderColor = ''; card.style.boxShadow = '';
+      val.style.color = '';
+      val.innerHTML = 'offline';
+      bar.style.width = '0%';
+      return;
+    }
+    card.classList.remove('off');
+    val.textContent = c.toFixed(2)+'°C';
+    // One normalised position drives the colour AND the bar length
+    const p = thermalPaint((c - tMin) / ((tMax - tMin) || 1));
+    val.style.color = p.text;
+    card.style.backgroundImage = p.tint;
+    card.style.borderColor = p.border;
+    card.style.boxShadow = p.glow;
+    bar.style.width = (p.t * 100) + '%';
+    bar.style.background = p.vivid;
+  });
+}
+
+const HM_GW = 44, HM_GH = 33;   // field computed coarse, then bilinearly upscaled
+let hmBuf = null, hmHover = null, hmPts = [];
+
+function drawHeatmap(){
+  const c = $('heatmap');
+  const cssW = c.clientWidth || 480;
+  const cssH = c.clientHeight || Math.round(cssW * 0.75);
+  if(!cssW) return;
+  const dpr = window.devicePixelRatio || 1;
+  c.width = cssW * dpr; c.height = cssH * dpr;
+  const g = c.getContext('2d');
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  g.clearRect(0, 0, cssW, cssH);
+
+  const cells = [];
+  for(let i = 0; i < 9; i++){
+    const v = lastTemps ? lastTemps[i] : undefined;
+    const pos = serp(i);
+    cells.push({
+      i, v: typeof v === 'number' ? v : null,
+      fx: ((pos % 3) + 0.5) / 3,
+      fy: (Math.floor(pos / 3) + 0.5) / 3
+    });
+  }
+  hmPts = cells;
+  const live = cells.filter(p => p.v !== null);
+
+  if(!live.length){
+    g.fillStyle = CHART_INK; g.font = '12px sans-serif';
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillText('no sensors reporting', cssW/2, cssH/2);
+    return;
+  }
+
+  if(!hmBuf){
+    hmBuf = document.createElement('canvas');
+    hmBuf.width = HM_GW; hmBuf.height = HM_GH;
+  }
+  const bg = hmBuf.getContext('2d');
+  const img = bg.createImageData(HM_GW, HM_GH);
+  for(let y = 0; y < HM_GH; y++){
+    const fy = (y + 0.5) / HM_GH;
+    for(let x = 0; x < HM_GW; x++){
+      const fx = (x + 0.5) / HM_GW;
+      let num = 0, den = 0, exact = null;
+      for(let k = 0; k < live.length; k++){
+        const p = live[k];
+        const dx = fx - p.fx, dy = fy - p.fy;
+        const d2 = dx*dx + dy*dy;
+        if(d2 < 1e-6){ exact = p.v; break; }
+        const w = 1 / d2;
+        num += w * p.v; den += w;
+      }
+      const v = exact !== null ? exact : num / den;
+      const col = thermalRamp((v - tMin) / ((tMax - tMin) || 1));
+      const o = (y * HM_GW + x) * 4;
+      img.data[o] = col[0]; img.data[o+1] = col[1]; img.data[o+2] = col[2];
+      img.data[o+3] = 168;
+    }
+  }
+  bg.putImageData(img, 0, 0);
+  g.imageSmoothingEnabled = true;
+  g.imageSmoothingQuality = 'high';
+  g.drawImage(hmBuf, 0, 0, HM_GW, HM_GH, 0, 0, cssW, cssH);
+
+  const r = Math.max(16, Math.min(26, cssW / 20));
+  g.textAlign = 'center';
+  cells.forEach(p => {
+    const cx = p.fx * cssW, cy = p.fy * cssH;
+
+    if(p.v === null){                       // slot exists, sensor does not
+      g.beginPath(); g.arc(cx, cy, r, 0, Math.PI*2);
+      g.lineWidth = 1.5; g.strokeStyle = CHART_INK; g.globalAlpha = .6; g.stroke();
+      g.globalAlpha = 1;
+      g.fillStyle = CHART_INK; g.font = '11px sans-serif'; g.textBaseline = 'middle';
+      g.fillText('—', cx, cy);
+    } else {
+      const rgb = thermalRamp((p.v - tMin) / ((tMax - tMin) || 1));
+      if(hmHover === p.i){
+        g.beginPath(); g.arc(cx, cy, r + 6, 0, Math.PI*2);
+        g.fillStyle = thermalCss(rgb, 0.25); g.fill();
+      }
+      g.beginPath(); g.arc(cx, cy, r, 0, Math.PI*2);
+      g.fillStyle = thermalCss(rgb); g.fill();
+      g.lineWidth = 2; g.strokeStyle = CHART_SURFACE; g.stroke();
+      // ink picked from the fill's luminance, so it clears contrast at both ends
+      g.fillStyle = thermalLum(rgb) > 0.6 ? '#0b0f17' : '#ffffff';
+      g.font = '600 ' + Math.round(r * 0.55) + 'px -apple-system,system-ui,sans-serif';
+      g.textBaseline = 'middle';
+      g.fillText(p.v.toFixed(1) + '°', cx, cy);
+    }
+
+    g.fillStyle = CHART_INK;
+    g.font = '10px ui-monospace,SFMono-Regular,Consolas,monospace';
+    g.textBaseline = 'bottom';
+    g.fillText(String(p.i + 1), cx, cy - r - 5);
+  });
+}
+
+(function bindHeatmapHover(){
+  const cv = $('heatmap');
+  cv.addEventListener('pointermove', e => {
+    const rect = cv.getBoundingClientRect();
+    const x = e.clientX - rect.left, y = e.clientY - rect.top;
+    let best = null, bestD = 1e9;
+    hmPts.forEach(p => {
+      const dx = x - p.fx * rect.width, dy = y - p.fy * rect.height;
+      const d = Math.sqrt(dx*dx + dy*dy);
+      if(d < bestD){ bestD = d; best = p; }
+    });
+    // hit target generously bigger than the circle -- nobody lands dead-centre
+    if(!best || bestD > 46 || best.v === null){
+      if(hmHover !== null){ hmHover = null; drawHeatmap(); }
+      $('hmTip').classList.remove('show');
+      return;
+    }
+    if(hmHover !== best.i){ hmHover = best.i; drawHeatmap(); }
+
+    const tip = $('hmTip');
+    tip.innerHTML = '';
+    const head = document.createElement('div');
+    head.className = 'tth';
+    head.textContent = 'slot ' + (best.i + 1);
+    const row = document.createElement('div'); row.className = 'ttr';
+    const key = document.createElement('i'); key.className = 'ttk';
+    key.style.background = thermalCss(thermalRamp((best.v - tMin) / ((tMax - tMin) || 1)));
+    const val = document.createElement('span'); val.className = 'ttv';
+    val.textContent = best.v.toFixed(2) + '°C';
+    const nm = document.createElement('span'); nm.className = 'ttn';
+    nm.textContent = sensorLabel(best.i);
+    row.append(key, val, nm);
+    tip.append(head, row);
+    tip.classList.add('show');
+
+    let left = x + 16, top = y - tip.offsetHeight - 12;
+    if(left + tip.offsetWidth > rect.width) left = x - tip.offsetWidth - 16;
+    if(left < 0) left = 0;
+    if(top < 0) top = y + 16;
+    tip.style.left = left + 'px';
+    tip.style.top = top + 'px';
+  });
+  cv.addEventListener('pointerleave', () => {
+    hmHover = null;
+    $('hmTip').classList.remove('show');
+    drawHeatmap();
+  });
+})();
+
+function fmtUptime(ms){
+  let s = Math.floor(ms/1000);
+  const d = Math.floor(s/86400); s%=86400;
+  const h = Math.floor(s/3600); s%=3600;
+  const m = Math.floor(s/60); s%=60;
+  return d>0 ? `${d}d ${h}h` : (h>0 ? `${h}h ${m}m` : `${m}m ${s}s`);
+}
+
+function update(data){
+  $('pVal').textContent = data.p.toFixed(1);
+  $('vVal').textContent = data.v.toFixed(1);
+  $('iVal').textContent = data.i.toFixed(3);
+  $('fVal').textContent = data.f.toFixed(2);
+  $('pfVal').textContent = (data.v*data.i).toFixed(1);
+  $('eVal').textContent = data.e.toFixed(3)+' kWh';
+  $('noLoad').style.display = data.noLoad ? 'inline' : 'none';
+  $('heapVal').textContent = (data.heap/1024).toFixed(0);
+  $('upVal').textContent = fmtUptime(data.uptime);
+
+  history.push(data.p); if(history.length>HISTORY_MAX) history.shift();
+  const gaugeMax = Math.max(500, Math.ceil((Math.max(...history,data.p)+50)/500)*500);
+  drawGauge(data.p, gaugeMax);
+  drawSpark();
+
+  if(data.cfg !== cfgVersion){ cfgVersion = data.cfg; loadSensorConfig(); }
+  lastTemps = data.temps;
+  renderTemps(data.temps);
+  drawHeatmap();
+}
+
+function connect(){
+  const es = new EventSource('/events');
+  es.onopen = ()=>{ $('dot').classList.add('live'); $('statusText').textContent='live'; };
+  es.onerror = ()=>{ $('dot').classList.remove('live'); $('statusText').textContent='reconnecting…'; };
+  es.addEventListener('data', e=>{ try{ update(JSON.parse(e.data)); }catch(err){} });
+}
+
+window.addEventListener('resize', ()=>{ drawSpark(); drawHeatmap(); });
+renderScale();
+loadSensorConfig();
+connect();
+</script>
+</body>
+</html>

@@ -327,6 +327,28 @@ Alerts carry a wall-clock time, so the firmware runs an SNTP client
 (`NTP_SERVER_1`, `NTP_TZ` in `config.h`). Before the first sync a message falls
 back to `uptime 3h12m` rather than claiming a time it does not know.
 
+### Showing the dashboard without a board
+
+`python tools/make_mockup.py` writes **`docs/dashboard-mockup.html`** — one file,
+no server, no network, no hardware. Open it and the dashboard runs with nine
+simulated probes and a wandering load, for demonstrating the product somewhere
+there is nothing to plug into.
+
+It is **generated from `dashboard_html.h` and `thermal_js.h`**, not drawn
+separately. A hand-made mockup looks like the product for about a fortnight and
+then quietly stops as the real page moves on; this one shares the markup, the
+CSS, the gauge, the serpentine layout and the colour ramp because it *is* the
+page. The only thing swapped is the data source: a shim ahead of the page's own
+script replaces `EventSource('/events')` and `fetch('/api/…')`, and nothing else.
+
+Re-run the script after any dashboard change. Probe names, resting temperatures
+and the nominal current sit in one block at the top of the generated file, so a
+copy can be tailored to whatever machine is being shown.
+
+> The page carries a **DEMO · ข้อมูลจำลอง** badge next to the live indicator.
+> Leave it on — a screenshot is otherwise indistinguishable from a reading taken
+> off a real installation.
+
 ### MQTT
 
 Publishes the readings on a timer (30 s by default) and listens for a firmware
@@ -631,6 +653,11 @@ Long parasitic-power runs are unreliable — prefer 3-wire.
 ```
 platformio.ini              two environments: serial_monitor, web_dashboard
 partitions_p1.csv           4MB layout: 1856K app slots + 256K LittleFS
+tools/
+  make_mockup.py            builds the offline demo copy of the dashboard
+docs/
+  dashboard-mockup.html     generated -- open in a browser, no board needed
+  flex_card_preview.json    the LINE alert card, for the Flex simulator
 include/
   config.h                  pin map + tunables shared by both examples
 lib/
