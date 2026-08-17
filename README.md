@@ -121,6 +121,7 @@ once lives behind `/settings`, as three tabs of one page:
 | **Sensors** | fix each DS18B20 to a slot and name it (below), with live temperatures beside each row |
 | **Calibration** | tune BL0942 kI/kV/kP against a real meter next to a live V/A/W readout; reset the kWh total |
 | **Alerts** | push a LINE message when temperature, voltage, frequency, current or power leaves its band (below) |
+| **MQTT** | broker, credentials, topics and publish interval — ThingsBoard by default (below) |
 | **Wi-Fi** | join a new network from a phone, see what the board is connected to (below) |
 | **Firmware** | upload a new `.bin` over the air, with an optional upload password (below) |
 
@@ -326,6 +327,65 @@ Alerts carry a wall-clock time, so the firmware runs an SNTP client
 (`NTP_SERVER_1`, `NTP_TZ` in `config.h`). Before the first sync a message falls
 back to `uptime 3h12m` rather than claiming a time it does not know.
 
+### MQTT
+
+Publishes the readings on a timer (30 s by default) and listens for a firmware
+command. Broker, credentials, topics and interval are set in the MQTT tab and
+stored in NVS. The defaults are ThingsBoard's topic names — put the device
+**access token** in Username and leave Password empty — but any broker works
+once the topics are changed.
+
+Telemetry payload:
+
+```json
+{"voltage":230.1,"current":1.234,"power":283.9,"frequency":50.01,
+ "energy":12.345,"heap":54436,"rssi":-58,"uptime":8412,
+ "temp1":25.31,"temp2":null,"temp3":41.06, ...}
+```
+
+A **failed meter read publishes `null`, not `0`.** Zero volts and zero watts is a
+perfectly plausible reading — it is what a power cut looks like — so writing it
+into the history when the truth is "the BL0942 did not answer" produces a record
+nobody can tell apart from a real outage afterwards. Same rule for an offline
+probe. On connect the board also publishes its version, IP, MAC and the
+**operator's names for each slot** as attributes, so a dashboard can label a
+series `หม้อแปลง` instead of `temp3` without keeping a second copy of that list.
+
+**All of this runs on its own FreeRTOS task.** PubSubClient has no non-blocking
+connect, so a broker that stops answering would freeze the loop task — and with
+it the SSE stream, the captive-portal DNS and the sampling clock — for seconds on
+every retry. `loop()` only hands over a copy of the last reading, and never waits
+for the lock to do it: a missed snapshot costs one stale value, while waiting
+would cost a beat of the sampling clock.
+
+> PubSubClient's buffer defaults to **256 bytes** and it drops anything larger
+> without a word. Nine temperatures plus the electricals do not fit;
+> `MQTT_BUFFER_BYTES` raises it to 1024.
+
+#### Firmware update by MQTT command
+
+Send JSON containing a URL to the command topic — either ThingsBoard RPC or bare:
+
+```json
+{"method":"fwUpdate","params":{"url":"http://192.168.1.10/firmware.bin"}}
+{"url":"http://192.168.1.10/firmware.bin"}
+```
+
+The board replies immediately with `{"ok":true,"state":"DOWNLOADING"}` and then
+downloads on a task of its own. **The reply cannot carry the outcome**: a 1.2 MB
+fetch takes tens of seconds and a ThingsBoard RPC call times out long before
+that, so the result arrives afterwards as telemetry instead:
+
+```json
+{"fw_state":"UPDATED","fw_message":"flashed, rebooting","fw_version":"2.2.3"}
+{"fw_state":"FAILED","fw_message":"-1 HTTP error: connection refused"}
+```
+
+Anything that can publish to the command topic can run arbitrary code on the
+board, so the broker credentials are the real security boundary here — there is
+no second check. `https://` URLs work; the certificate is not verified, the same
+trade-off as the LINE client.
+
 ### Firmware updates (OTA)
 
 The Firmware tab takes a `.bin` from the browser and reflashes the board. Upload
@@ -375,6 +435,8 @@ header and checked before the first byte is written.
 | GET | `/api/alerts` | thresholds + `{tokenSet, sentToday, clockOk, now, lastCode}` — **never the token itself** |
 | POST | `/api/alerts` | set thresholds; `token` is only written when non-empty, so a blank field keeps the saved one |
 | POST | `/api/alerts/test` | queue a test LINE message |
+| GET | `/api/mqtt` | broker settings + `{connected, published, failures, passSet, error}` — never the password |
+| POST | `/api/mqtt` | set broker/topics/interval; blank `pass` keeps the stored one |
 | GET | `/api/ota` | `{fw, build, running, target, targetSize, sketch, keySet}` |
 | POST | `/api/ota` | multipart `firmware.bin`; `X-OTA-Key` header when a password is set |
 | POST | `/api/ota/key` | `{"key":"…"}`, empty clears it |
@@ -439,6 +501,13 @@ All of `include/config.h`, shared by both environments:
 | `ALERT_MIN_FREE_HEAP` | 60000 | skip the push below this — a TLS handshake needs room |
 | `ALERT_TASK_STACK` | 8192 | sender task stack; mbedTLS handshakes are stack-hungry |
 | `ALERT_DEF_*` | 60 °C, 200–250 V, 49–51 Hz, 20 A, 4000 W | first-boot thresholds; editable at `/settings` afterwards |
+| `MQTT_DEF_PORT` | 1883 | broker port on a board never set up |
+| `MQTT_DEF_INTERVAL_S` | 30 | seconds between telemetry publishes |
+| `MQTT_DEF_PUB_TOPIC` etc. | ThingsBoard topic names | seed values for the MQTT tab |
+| `MQTT_BUFFER_BYTES` | 1024 | PubSubClient's 256-byte default silently drops our payload |
+| `MQTT_RECONNECT_MS` | 8000 | gap between connection attempts |
+| `MQTT_TASK_STACK` | 6144 | MQTT client task |
+| `OTA_URL_TASK_STACK` | 8192 | download-and-flash task |
 | `NTP_SERVER_1` / `NTP_SERVER_2` | pool.ntp.org / time.google.com | clock for alert timestamps and the daily cap |
 | `NTP_TZ` | `"ICT-7"` | POSIX TZ — Thailand, UTC+7, no DST (sign is inverted) |
 | `TEMP_COLOR_MIN_C` | 10 | coldest end of the thermal ramp |
@@ -498,6 +567,7 @@ python gen_esp32part.py parts.bin
 | `sensors` | `map` (JSON: addresses + names in slot order) | on save from `/settings` |
 | `wifi` | `ssid`, `pass` | on save or forget from `/wifi` |
 | `alerts` | thresholds, `to`, `token` | on save from the Alerts tab |
+| `mqtt` | broker, port, user, pass, client id, topics, interval | on save from the MQTT tab |
 | `ota` | `key` | on save from the Firmware tab |
 
 `pio run -t upload` does **not** touch NVS — it only rewrites the app partition,
@@ -573,7 +643,8 @@ src/
     main.cpp                Example 2: sensor slot map, routes, SSE push
     wifi_portal.h/.cpp      NVS credentials + captive-portal fallback (API only)
     alerts.h/.cpp           threshold engine + LINE Messaging API sender task
-    ota.h/.cpp              browser firmware upload into the spare app slot
+    mqtt.h/.cpp             telemetry publisher + firmware-by-URL command, own task
+    ota.h/.cpp              firmware upload from a browser, or pulled from a URL
     dashboard_html.h        the read-only dashboard page
     settings_html.h         /settings and /wifi -- sensors, calibration, alerts, Wi-Fi
     thermal_js.h            shared thermal colour ramp, served at /thermal.js

@@ -10,7 +10,7 @@
 // it from here, so a board in the field can be identified without a serial
 // cable. FIRMWARE_BUILD stamps the compile time, which is what tells two builds
 // of the same version apart while a change is being tested.
-#define FIRMWARE_VERSION "2.2.3"
+#define FIRMWARE_VERSION "2.2.4"
 #define FIRMWARE_BUILD   __DATE__ " " __TIME__
 
 // ---- BL0942 energy metering IC (UART2) -------------------------------------
@@ -87,6 +87,34 @@
 #define ALERT_DEF_WATT_MAX   4000.0f
 #define ALERT_DEF_COOLDOWN_MIN   15  // minimum minutes between messages per alert
 #define ALERT_DEF_DAILY_CAP      20  // hard stop for one calendar day
+
+// ---- MQTT / ThingsBoard (example 2) ---------------------------------------------
+// Publishes the same readings the dashboard shows to an MQTT broker, and listens
+// for a firmware-update command carrying a URL. Broker address, credentials and
+// topics are entered at /settings and live in NVS -- only the defaults are here.
+//
+// The defaults are ThingsBoard's own topic names, because that is where these
+// boards report. A plain broker works just as well: change the topics.
+//
+// RUNS ON ITS OWN TASK. A broker that stops answering makes connect() block for
+// seconds, and PubSubClient has no non-blocking connect. On the loop task that
+// would stall the SSE push, the captive-portal DNS and the sampling clock every
+// retry, so the whole client lives on a separate task and loop() only ever hands
+// it a copy of the latest reading.
+#define MQTT_DEF_PORT        1883
+#define MQTT_DEF_INTERVAL_S  30     // seconds between telemetry publishes
+#define MQTT_DEF_PUB_TOPIC   "v1/devices/me/telemetry"
+#define MQTT_DEF_SUB_TOPIC   "v1/devices/me/rpc/request/+"
+#define MQTT_DEF_ATTR_TOPIC  "v1/devices/me/attributes"
+#define MQTT_TASK_STACK      6144
+#define MQTT_BUFFER_BYTES    1024   // PubSubClient defaults to 256, far too small
+                                    // for nine temperatures plus the electricals
+#define MQTT_RECONNECT_MS    8000   // gap between connection attempts
+#define MQTT_KEEPALIVE_S     30
+
+// Downloading and flashing an image takes tens of seconds, which is why it gets
+// a task of its own rather than running wherever the command arrived.
+#define OTA_URL_TASK_STACK   8192
 
 // ---- Clock (example 2) ---------------------------------------------------------
 // Alerts carry a wall-clock time, which uptime cannot give. Also what the daily

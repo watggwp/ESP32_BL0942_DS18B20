@@ -1,6 +1,9 @@
 #include "ota.h"
 
 #include <Update.h>
+#include <HTTPUpdate.h>
+#include <WiFi.h>
+#include <WiFiClientSecure.h>
 #include <Preferences.h>
 #include <ArduinoJson.h>
 #include <AsyncJson.h>
@@ -86,7 +89,87 @@ void handleUpload(AsyncWebServerRequest *request, String filename, size_t index,
     }
 }
 
+// ---------------------------------------------------------------------------
+// Update from a URL
+// ---------------------------------------------------------------------------
+OTA::UrlState urlStateVal = OTA::UrlState::IDLE;
+char urlMsg[144] = "";
+char pendingUrl[256] = "";
+
+void urlUpdateTask(void *) {
+    Serial.printf("OTA: fetching %s\n", pendingUrl);
+
+    // rebootOnUpdate(false): the reboot is deferred to loop() like the browser
+    // path, so whoever asked for this gets told how it went before the board
+    // disappears. A silent restart looks identical to a crash from the outside.
+    httpUpdate.rebootOnUpdate(false);
+    httpUpdate.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
+
+    t_httpUpdate_return ret;
+    if (strncmp(pendingUrl, "https://", 8) == 0) {
+        WiFiClientSecure secure;
+        secure.setInsecure();   // same trade-off as the LINE client -- see alerts.cpp
+        secure.setTimeout(20);
+        ret = httpUpdate.update(secure, pendingUrl);
+    } else {
+        WiFiClient plain;
+        ret = httpUpdate.update(plain, pendingUrl);
+    }
+
+    switch (ret) {
+        case HTTP_UPDATE_OK:
+            snprintf(urlMsg, sizeof(urlMsg), "flashed, rebooting");
+            urlStateVal = OTA::UrlState::DONE_OK;
+            rebootAt = millis() + 2500;   // room for a result message to go out
+            break;
+        case HTTP_UPDATE_NO_UPDATES:
+            snprintf(urlMsg, sizeof(urlMsg), "server had nothing to send");
+            urlStateVal = OTA::UrlState::DONE_FAIL;
+            break;
+        default:
+            snprintf(urlMsg, sizeof(urlMsg), "%d %s", httpUpdate.getLastError(),
+                     httpUpdate.getLastErrorString().c_str());
+            urlStateVal = OTA::UrlState::DONE_FAIL;
+            break;
+    }
+    Serial.printf("OTA: url update %s -- %s\n",
+                  urlStateVal == OTA::UrlState::DONE_OK ? "OK" : "FAILED", urlMsg);
+    vTaskDelete(nullptr);
+}
+
 }  // namespace
+
+bool OTA::startFromUrl(const char *url) {
+    if (urlStateVal == UrlState::RUNNING) {
+        Serial.println("OTA: a url update is already running");
+        return false;
+    }
+    if (!url || (strncmp(url, "http://", 7) != 0 && strncmp(url, "https://", 8) != 0)) {
+        Serial.println("OTA: url must start with http:// or https://");
+        return false;
+    }
+    if (WiFi.status() != WL_CONNECTED) {
+        Serial.println("OTA: no network for a url update");
+        return false;
+    }
+    strlcpy(pendingUrl, url, sizeof(pendingUrl));
+    urlMsg[0] = '\0';
+    urlStateVal = UrlState::RUNNING;
+    if (xTaskCreate(urlUpdateTask, "otaurl", OTA_URL_TASK_STACK, nullptr, 1, nullptr) != pdPASS) {
+        urlStateVal = UrlState::DONE_FAIL;
+        strlcpy(urlMsg, "could not start the download task", sizeof(urlMsg));
+        return false;
+    }
+    return true;
+}
+
+OTA::UrlState OTA::urlState() { return urlStateVal; }
+const char *OTA::urlMessage() { return urlMsg; }
+void OTA::clearUrlState() {
+    if (urlStateVal == UrlState::DONE_OK || urlStateVal == UrlState::DONE_FAIL) {
+        urlStateVal = UrlState::IDLE;
+    }
+}
 
 void OTA::begin() {
     prefs.begin("ota", false);

@@ -203,6 +203,7 @@ footer{margin-top:22px;color:var(--muted);font-size:.75rem;text-align:center}
   <button class="tab on" data-tab="sensors">&#127777; Sensors</button>
   <button class="tab" data-tab="calibration">&#9889; Calibration</button>
   <button class="tab" data-tab="alerts">&#128276; Alerts</button>
+  <button class="tab" data-tab="mqtt">&#128225; MQTT</button>
   <button class="tab" data-tab="wifi">&#128246; Wi-Fi</button>
   <button class="tab" data-tab="firmware">&#128190; Firmware</button>
 </div>
@@ -342,6 +343,59 @@ footer{margin-top:22px;color:var(--muted);font-size:.75rem;text-align:center}
   </div>
 </div>
 
+<div class="panel" id="p-mqtt">
+  <div class="card">
+    <h2>Broker <label class="sw"><input type="checkbox" id="mqOn"> publishing enabled</label></h2>
+    <div class="tip" style="margin-bottom:14px">Defaults are ThingsBoard's own topics: put the device
+      <b>access token</b> in Username and leave Password empty. Any other broker works too &mdash; change
+      the topics to whatever it expects.</div>
+    <div class="knobs">
+      <div class="knob" style="flex:2;min-width:200px"><label for="mqHost">Broker address</label>
+        <input id="mqHost" maxlength="60" autocomplete="off" spellcheck="false" placeholder="thingsboard.cloud"></div>
+      <div class="knob"><label for="mqPort">Port</label><input id="mqPort" type="number" min="1" max="65535"></div>
+      <div class="knob"><label for="mqEvery">Every (s)</label><input id="mqEvery" type="number" min="5" max="3600"></div>
+    </div>
+    <div class="field" style="margin-top:14px">
+      <label for="mqUser">Username &mdash; ThingsBoard device access token</label>
+      <input id="mqUser" maxlength="90" autocomplete="off" spellcheck="false">
+    </div>
+    <div class="field">
+      <label for="mqPass">Password</label>
+      <input id="mqPass" type="password" maxlength="60" autocomplete="off" placeholder="leave empty for ThingsBoard">
+    </div>
+    <div class="field">
+      <label for="mqCid">Client ID</label>
+      <input id="mqCid" maxlength="38" autocomplete="off" spellcheck="false">
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Topics</h2>
+    <div class="field">
+      <label for="mqPub">Telemetry &mdash; readings are published here</label>
+      <input id="mqPub" maxlength="78" autocomplete="off" spellcheck="false">
+    </div>
+    <div class="field">
+      <label for="mqSub">Commands &mdash; firmware updates arrive here (empty = do not listen)</label>
+      <input id="mqSub" maxlength="78" autocomplete="off" spellcheck="false">
+    </div>
+    <div class="field">
+      <label for="mqAttr">Attributes &mdash; version, IP and sensor names on connect (empty = skip)</label>
+      <input id="mqAttr" maxlength="78" autocomplete="off" spellcheck="false">
+    </div>
+    <div class="tip" style="margin-top:12px">A command is JSON with a URL in it, either ThingsBoard RPC
+      <b>{"method":"fwUpdate","params":{"url":"http://&hellip;/firmware.bin"}}</b> or plain
+      <b>{"url":"http://&hellip;/firmware.bin"}</b>. The board answers straight away, downloads, flashes the
+      spare slot and reboots, then reports <b>fw_state</b> as telemetry &mdash; an RPC call would time out
+      long before a 1.2 MB download finishes, so the outcome cannot come back as the reply.</div>
+    <div class="actions" style="margin-top:16px">
+      <span class="tip" id="mqStat">&mdash;</span>
+      <button class="btn primary" id="mqSave">Save &amp; reconnect</button>
+    </div>
+    <div class="err" id="mqErr" style="display:none"></div>
+  </div>
+</div>
+
 <div class="panel" id="p-wifi">
   <div class="card">
     <h2>Status</h2>
@@ -447,16 +501,24 @@ function toast(msg){
 }
 
 // ---------------------------------------------------------------- tabs
-const TABS = ['sensors','calibration','alerts','wifi','firmware'];
+const TABS = ['sensors','calibration','alerts','mqtt','wifi','firmware'];
+
+let current = 'sensors';
 
 function showTab(id){
   if(TABS.indexOf(id) < 0) id = 'sensors';
+  current = id;
   TABS.forEach(t=>$('p-'+t).classList.toggle('on', t === id));
   document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('on', b.dataset.tab === id));
   // replaceState, not location.hash: a reload lands back on the same tab without
   // filling the back button with tab switches
   history.replaceState(null, '', location.pathname + '#' + id);
   id === 'wifi' ? startWifi() : stopWifi();
+  // Both carry live state worth refetching on the way in rather than showing
+  // whatever was true minutes ago. MQTT refreshes its status line ONLY: the form
+  // was filled at page load and may be half-edited by now.
+  if(id === 'mqtt') pollMqtt();
+  if(id === 'firmware') loadOta();
 }
 document.querySelectorAll('.tab').forEach(b=>b.onclick = ()=>showTab(b.dataset.tab));
 
@@ -662,6 +724,82 @@ $('atest').addEventListener('click', ()=>{
     setTimeout(loadAlerts, 4000);
   }).catch(()=>{ $('atest').disabled = false; toast('Could not reach the board'); });
 });
+
+// ---------------------------------------------------------------- mqtt
+function mqttStatus(d){
+  const bits = [];
+  bits.push(d.enabled ? (d.connected ? 'connected' : 'not connected') : 'disabled');
+  bits.push(d.published + ' published');
+  if(d.failures) bits.push(d.failures + ' failed');
+  $('mqStat').textContent = bits.join(' · ');
+  const e = $('mqErr');
+  e.textContent = d.error || '';
+  e.style.display = d.error ? 'block' : 'none';
+}
+
+// Fills the form. Only ever called when there cannot be an edit in progress:
+// on page load and straight after a save. Calling it on a timer would wipe
+// whatever the operator was halfway through typing.
+function loadMqtt(){
+  fetch('/api/mqtt').then(r=>r.json()).then(d=>{
+    $('mqOn').checked = d.enabled;
+    $('mqHost').value = d.host || '';
+    $('mqPort').value = d.port;
+    $('mqEvery').value = d.interval;
+    $('mqUser').value = d.user || '';
+    $('mqCid').value = d.clientId || '';
+    $('mqPub').value = d.pubTopic || '';
+    $('mqSub').value = d.subTopic || '';
+    $('mqAttr').value = d.attrTopic || '';
+    $('mqPass').placeholder = d.passSet ? 'saved — type a new one to replace it'
+                                        : 'leave empty for ThingsBoard';
+    mqttStatus(d);
+  }).catch(()=>{});
+}
+
+// The polling counterpart: reads the same endpoint but touches nothing except
+// the status line, so it is safe to run while someone is filling the form in.
+function pollMqtt(){
+  fetch('/api/mqtt').then(r=>r.json()).then(mqttStatus).catch(()=>{});
+}
+
+$('mqSave').addEventListener('click', ()=>{
+  const body = {
+    enabled: $('mqOn').checked,
+    host: $('mqHost').value.trim(),
+    port: parseInt($('mqPort').value, 10) || 1883,
+    interval: parseInt($('mqEvery').value, 10) || 30,
+    user: $('mqUser').value.trim(),
+    clientId: $('mqCid').value.trim(),
+    pubTopic: $('mqPub').value.trim(),
+    subTopic: $('mqSub').value.trim(),
+    attrTopic: $('mqAttr').value.trim()
+  };
+  if(body.enabled && !body.host){ toast('A broker address is required'); return; }
+  if(!body.pubTopic){ toast('A telemetry topic is required'); return; }
+  const pass = $('mqPass').value;
+  if(pass) body.pass = pass;
+
+  $('mqSave').disabled = true;
+  fetch('/api/mqtt', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)})
+    .then(r=>r.json()).then(d=>{
+      $('mqSave').disabled = false;
+      if(!d.ok){ toast('Failed: ' + (d.error||'rejected')); return; }
+      $('mqPass').value = '';
+      toast('Saved — reconnecting to the broker');
+      // Refill now, while nobody can be mid-edit, to pick up anything the board
+      // normalised -- an empty client ID comes back filled in, for one.
+      loadMqtt();
+      // Then just the status: the task rebuilds the link on its next pass, and
+      // asking any sooner always answers "not connected".
+      setTimeout(pollMqtt, 3000);
+    }).catch(()=>{ $('mqSave').disabled = false; toast('Save failed'); });
+});
+
+// Status only, and only while the tab is open -- a poll every few seconds on a
+// page nobody is looking at is a request the board has better things to do than
+// answer.
+setInterval(()=>{ if(current === 'mqtt') pollMqtt(); }, 5000);
 
 // ---------------------------------------------------------------- firmware
 let otaFile = null, otaInfo = {};
@@ -952,6 +1090,7 @@ showTab((location.hash || '').replace('#','') ||
 loadSensors();
 loadCalibration();
 loadAlerts();
+loadMqtt();
 loadOta();
 </script>
 </body>

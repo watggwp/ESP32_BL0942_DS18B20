@@ -22,6 +22,23 @@ namespace OTA {
 void begin();
 void registerRoutes(AsyncWebServer &server);
 
+// ---- update from a URL ----------------------------------------------------
+// The other way in: something tells the board where an image is and the board
+// fetches it itself. Used by the MQTT command handler, so a fleet can be updated
+// without anyone opening a browser at each board.
+//
+// The download runs on a task of its own -- it takes tens of seconds, and the
+// caller here is an MQTT callback that has a keepalive to answer.
+enum class UrlState : uint8_t { IDLE, RUNNING, DONE_OK, DONE_FAIL };
+
+// false if a download is already in flight or the URL is unusable.
+bool startFromUrl(const char *url);
+
+UrlState urlState();
+const char *urlMessage();   // why it failed, or what it flashed
+// Marks the finished state as reported, so a watcher publishes it once.
+void clearUrlState();
+
 // Carries out the reboot that a finished upload asks for. Called from loop()
 // because restarting inside a request handler kills the connection before the
 // browser is told the upload succeeded.

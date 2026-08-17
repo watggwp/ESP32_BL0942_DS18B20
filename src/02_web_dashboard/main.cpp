@@ -23,6 +23,7 @@
 #include "BL0942.h"
 #include "StatusLED.h"
 #include "alerts.h"
+#include "mqtt.h"
 #include "ota.h"
 #include "dashboard_html.h"
 #include "settings_html.h"
@@ -62,6 +63,12 @@ BL0942Data lastSample;
 // ---------------------------------------------------------------------------
 // Sensor slot map
 // ---------------------------------------------------------------------------
+// Shared by the alert engine and the MQTT attribute publish: both label a slot
+// with whatever the operator typed for it, and neither should own that lookup.
+static const char *slotNameOf(uint8_t slot) {
+    return slot < slotCount ? slots[slot].name : "";
+}
+
 static void addrToHex(const DeviceAddress addr, char *out /* >= 17 bytes */) {
     static const char *digits = "0123456789ABCDEF";   // not HEX: Print.h defines that
     for (uint8_t i = 0; i < 8; i++) {
@@ -335,6 +342,7 @@ static void setupRoutes() {
 
     WiFiPortal::registerRoutes(server);   // /api/wifi*, captive-portal catch-all
     Alerts::registerRoutes(server);       // /api/alerts, /api/alerts/test
+    Mqtt::registerRoutes(server);         // /api/mqtt
     OTA::registerRoutes(server);          // /api/ota, /api/ota/key
 
     server.addHandler(&events);
@@ -370,6 +378,7 @@ void setup() {
 
     WiFiPortal::begin(DEVICE_HOSTNAME, [] { led.update(); });
     Alerts::begin();   // after Wi-Fi, so SNTP has somewhere to send its query
+    Mqtt::begin(slotNameOf);
     OTA::begin();
     setupRoutes();
 
@@ -437,13 +446,12 @@ void loop() {
     }
     sensors.requestTemperatures();   // start the next one; ready a second from now
 
-    // Queues text at most; the TLS handshake happens on its own task so nothing
-    // here waits on the network.
+    // Both of these only ever queue or copy: the TLS handshake and the MQTT
+    // publish happen on their own tasks, so nothing here waits on the network.
     Alerts::evaluate(ok, lastSample.voltageV, lastSample.currentA, lastSample.activePowerW,
-                     lastSample.frequencyHz, tempC, slotCount,
-                     [](uint8_t slot) -> const char * {
-                         return slot < slotCount ? slots[slot].name : "";
-                     });
+                     lastSample.frequencyHz, tempC, slotCount, slotNameOf);
+    Mqtt::sample(ok, lastSample.voltageV, lastSample.currentA, lastSample.activePowerW,
+                 lastSample.frequencyHz, energyKWh, tempC, slotCount);
 
     String payload;
     serializeJson(doc, payload);
