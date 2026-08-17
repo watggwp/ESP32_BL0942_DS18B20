@@ -418,6 +418,43 @@ are entered at `/wifi` and stored in NVS. The same goes for the LINE channel
 access token and destination — `/settings` writes both, and the API never reads
 them back out.
 
+### Flash layout
+
+The board carries a 4 MB chip. Arduino's stock table hands the application 1280K
+of it and parks **1408K in a SPIFFS partition this firmware never opens** — the
+web pages are compiled into the binary as PROGMEM strings and every setting lives
+in NVS. A third of the chip did nothing while the app slot sat at 95% full, which
+is why `partitions_p1.csv` replaces it:
+
+| | stock `default.csv` | `partitions_p1.csv` |
+|---|---|---|
+| app0 / app1 | 1280K each | **1856K each** |
+| filesystem | 1408K SPIFFS, unused | 256K LittleFS |
+| app slot used by `web_dashboard` | 95.1% | **65.6%** |
+| headroom | 64 KB | **654 KB** |
+
+Two app slots are kept, so OTA still works — the running image is never the one
+being overwritten. The 256K is for telemetry that could not be delivered: once
+MQTT is pushing to ThingsBoard, a dropped link would otherwise be a hole in the
+history, and ThingsBoard accepts records with their original timestamps, so a
+backfill lands in the right place on the graph.
+
+**`nvs` keeps its offset and its size**, which is what makes this safe to apply
+to a board already in service: calibration, the kWh total, the sensor slot map,
+Wi-Fi credentials and the LINE settings all survive. Move `nvs` by one byte and
+every one of them is gone.
+
+> A table change cannot be delivered over OTA — OTA writes app slots, not the
+> table at `0x8000`. The first flash after this change has to go over USB
+> (`pio run -e web_dashboard -t upload`). OTA works normally from then on.
+
+To read the table off a board rather than trusting the source:
+
+```
+python esptool.py --port COM12 read_flash 0x8000 0xc00 parts.bin
+python gen_esp32part.py parts.bin
+```
+
 ### What is stored in flash (NVS)
 
 | Namespace | Keys | Written when |
@@ -487,6 +524,7 @@ Long parasitic-power runs are unreliable — prefer 3-wire.
 
 ```
 platformio.ini              two environments: serial_monitor, web_dashboard
+partitions_p1.csv           4MB layout: 1856K app slots + 256K LittleFS
 include/
   config.h                  pin map + tunables shared by both examples
 lib/

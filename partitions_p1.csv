@@ -1,0 +1,50 @@
+# Partition table for the P1 board -- replaces Arduino's default.csv.
+#
+# WHY. The stock table gives the application 1280K and then parks 1408K in a
+# SPIFFS partition this firmware never opens: the web pages are compiled into the
+# binary as PROGMEM strings and every setting lives in NVS. A third of the chip
+# was doing nothing while the app slot sat at 95% full.
+#
+# WHAT CHANGED. app0/app1 grow 1280K -> 1856K each, and what is left of the dead
+# SPIFFS space becomes a small LittleFS partition. Two app slots are kept, so OTA
+# still works: the running image is never the one being overwritten.
+#
+# NVS IS DELIBERATELY UNTOUCHED, same offset and same size as the stock table.
+# That is what makes this change safe to apply to a board already in service --
+# calibration, the kWh total, the sensor slot map, Wi-Fi credentials and the LINE
+# settings all survive. Move nvs by one byte and every one of them is gone.
+#
+# THE 256K littlefs is for telemetry that could not be delivered: with MQTT to
+# ThingsBoard, a dropped link would otherwise be a hole in the history. Roughly
+# 5,400 records of (timestamp + V/I/P/Hz + 9 temperatures) at ~48 bytes each,
+# which is about 3.7 days of outage buffered at one record a minute. It is only
+# written to while the link is down, so flash wear is a non-issue.
+#
+# FLASHING. A table change cannot be delivered over OTA -- OTA writes app slots,
+# not the table at 0x8000. The first flash after this must go over USB:
+#     pio run -e web_dashboard -t upload
+# OTA works normally from then on.
+#
+# Offsets are exact: app partitions are 64K-aligned as the bootloader requires,
+# and the last byte of coredump is the last byte of a 4MB chip.
+#
+#   0x009000  nvs        20K
+#   0x00e000  otadata     8K
+#   0x010000  app0     1856K
+#   0x1e0000  app1     1856K
+#   0x3b0000  spiffs    256K   (formatted LittleFS -- see below)
+#   0x3f0000  coredump   64K   -> 0x400000 = 4MB exactly
+#
+# THE DATA PARTITION IS NAMED "spiffs" ON PURPOSE, even though it holds a
+# LittleFS volume. Arduino's LittleFS.begin() defaults to the partition labelled
+# "spiffs", and so does PlatformIO's uploadfs -- name it "littlefs" instead and
+# both quietly fail to find it, plus the IDF tool warns that the label collides
+# with a reserved subtype. The label is a lookup key here, not a format.
+#
+# Name,     Type, SubType,  Offset,   Size,     Flags
+nvs,        data, nvs,      0x9000,   0x5000,
+otadata,    data, ota,      0xe000,   0x2000,
+app0,       app,  ota_0,    0x10000,  0x1d0000,
+app1,       app,  ota_1,    0x1e0000, 0x1d0000,
+spiffs,     data, spiffs,   0x3b0000, 0x40000,
+coredump,   data, coredump, 0x3f0000, 0x10000,
