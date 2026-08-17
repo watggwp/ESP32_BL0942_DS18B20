@@ -125,6 +125,21 @@ input[type=checkbox]{width:auto;margin:0;accent-color:var(--accent)}
   justify-content:flex-end}
 .lim input[type=number]{width:86px}
 .lim.off{opacity:.45}
+/* --- Firmware tab --- */
+.slots{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:4px}
+.slotbox{background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:12px}
+.slotbox .k{color:var(--muted);font-size:.7rem;text-transform:uppercase;letter-spacing:.5px}
+.slotbox .v{font-size:.95rem;font-weight:700;margin-top:4px;font-variant-numeric:tabular-nums;
+  overflow-wrap:anywhere}
+.drop{border:1.5px dashed var(--border);border-radius:12px;padding:22px 16px;text-align:center;
+  transition:.15s;cursor:pointer;margin-top:4px}
+.drop:hover,.drop.over{border-color:var(--accent);background:var(--bg)}
+.drop .big{font-size:.95rem;font-weight:600}
+.drop .sub{color:var(--muted);font-size:.76rem;margin-top:5px;overflow-wrap:anywhere}
+.prog{height:8px;border-radius:4px;background:var(--bg);border:1px solid var(--border);
+  overflow:hidden;margin-top:14px;display:none}
+.prog.on{display:block}
+.prog i{display:block;height:100%;width:0;background:var(--accent);transition:width .2s}
 .err{margin-top:12px;padding:10px 12px;border-radius:10px;background:rgba(239,107,107,.09);
   border:1px solid var(--bad);color:var(--bad);font-size:.78rem;line-height:1.5;
   font-family:ui-monospace,SFMono-Regular,Consolas,monospace;word-break:break-word}
@@ -189,6 +204,7 @@ footer{margin-top:22px;color:var(--muted);font-size:.75rem;text-align:center}
   <button class="tab" data-tab="calibration">&#9889; Calibration</button>
   <button class="tab" data-tab="alerts">&#128276; Alerts</button>
   <button class="tab" data-tab="wifi">&#128246; Wi-Fi</button>
+  <button class="tab" data-tab="firmware">&#128190; Firmware</button>
 </div>
 
 <div class="panel on" id="p-sensors">
@@ -362,6 +378,54 @@ footer{margin-top:22px;color:var(--muted);font-size:.75rem;text-align:center}
   </div>
 </div>
 
+<div class="panel" id="p-firmware">
+  <div class="card">
+    <h2>Running now</h2>
+    <div class="slots">
+      <div class="slotbox"><div class="k">Version</div><div class="v" id="oFw">&mdash;</div></div>
+      <div class="slotbox"><div class="k">Built</div><div class="v" id="oBuilt">&mdash;</div></div>
+      <div class="slotbox"><div class="k">Booted from</div><div class="v" id="oRun">&mdash;</div></div>
+      <div class="slotbox"><div class="k">Image size</div><div class="v" id="oSize">&mdash;</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Upload new firmware</h2>
+    <input type="file" id="ofile" accept=".bin" style="display:none">
+    <div class="drop" id="odrop">
+      <div class="big" id="odropText">Choose a .bin file, or drop one here</div>
+      <div class="sub" id="odropSub">.pio/build/web_dashboard/firmware.bin</div>
+    </div>
+    <div class="prog" id="oprog"><i id="oprogBar"></i></div>
+    <div class="err" id="oerr" style="display:none"></div>
+    <div class="actions" style="margin-top:16px">
+      <span class="tip" id="oTarget">&mdash;</span>
+      <button class="btn primary" id="oupload" disabled>Upload &amp; reboot</button>
+    </div>
+    <div class="tip" style="margin-top:12px">Upload <b>firmware.bin</b> only. <b>bootloader.bin</b> and
+      <b>partitions.bin</b> live outside the app slots and can only be written over USB &mdash; the board
+      rejects them here rather than bricking itself. The new image goes into the spare slot, so if the
+      upload fails or the power drops halfway, the firmware running right now is untouched and the board
+      still boots.</div>
+  </div>
+
+  <div class="card">
+    <h2>Upload password <label class="sw" id="okeyState">&mdash;</label></h2>
+    <div class="field">
+      <input id="okey" type="password" maxlength="32" autocomplete="off"
+             placeholder="leave empty for no password">
+    </div>
+    <div class="actions" style="margin-top:14px">
+      <span class="tip">Anyone who can open this page can flash the board.</span>
+      <button class="btn" id="okeySave">Save password</button>
+    </div>
+    <div class="tip" style="margin-top:12px">Optional, and off by default so the first update works without
+      setting anything up. Worth turning on for a board sharing a network with people who have no business
+      reflashing it &mdash; this endpoint hands over code execution, which the rest of this page does not.
+      Saving an empty field clears it.</div>
+  </div>
+</div>
+
 <footer><span id="fw" title="">firmware &mdash;</span></footer>
 
 <div class="toast" id="toast"></div>
@@ -383,7 +447,7 @@ function toast(msg){
 }
 
 // ---------------------------------------------------------------- tabs
-const TABS = ['sensors','calibration','alerts','wifi'];
+const TABS = ['sensors','calibration','alerts','wifi','firmware'];
 
 function showTab(id){
   if(TABS.indexOf(id) < 0) id = 'sensors';
@@ -599,6 +663,130 @@ $('atest').addEventListener('click', ()=>{
   }).catch(()=>{ $('atest').disabled = false; toast('Could not reach the board'); });
 });
 
+// ---------------------------------------------------------------- firmware
+let otaFile = null, otaInfo = {};
+
+function kb(n){ return n >= 1048576 ? (n/1048576).toFixed(2) + ' MB' : Math.round(n/1024) + ' KB'; }
+
+function otaError(msg){
+  const e = $('oerr');
+  e.textContent = msg || '';
+  e.style.display = msg ? 'block' : 'none';
+}
+
+function loadOta(){
+  fetch('/api/ota').then(r=>r.json()).then(d=>{
+    otaInfo = d;
+    $('oFw').textContent = 'v' + d.fw;
+    $('oBuilt').textContent = d.build;
+    $('oRun').textContent = d.running;
+    $('oSize').textContent = kb(d.sketch);
+    $('oTarget').textContent = 'goes into ' + d.target + ' · ' + kb(d.targetSize) + ' available';
+    $('okeyState').textContent = d.keySet ? 'password set' : 'no password';
+    $('okey').placeholder = d.keySet ? 'saved — type a new one, or save empty to clear'
+                                     : 'leave empty for no password';
+  }).catch(()=>{});
+}
+
+function pickFile(f){
+  otaFile = f || null;
+  otaError('');
+  if(!otaFile){ $('oupload').disabled = true; return; }
+  $('odropText').textContent = otaFile.name;
+  $('odropSub').textContent = kb(otaFile.size);
+  // Caught here as well as on the board: a 3 MB file would spend a minute
+  // uploading before the board could possibly refuse it.
+  if(otaInfo.targetSize && otaFile.size > otaInfo.targetSize){
+    otaError('That file is ' + kb(otaFile.size) + ', larger than the ' + kb(otaInfo.targetSize) + ' slot');
+    $('oupload').disabled = true;
+    return;
+  }
+  if(!/\.bin$/i.test(otaFile.name)){
+    otaError('Firmware has to be a .bin file');
+    $('oupload').disabled = true;
+    return;
+  }
+  $('oupload').disabled = false;
+}
+
+$('odrop').addEventListener('click', ()=>$('ofile').click());
+$('ofile').addEventListener('change', e=>pickFile(e.target.files[0]));
+['dragenter','dragover'].forEach(ev=>$('odrop').addEventListener(ev, e=>{
+  e.preventDefault(); $('odrop').classList.add('over');
+}));
+['dragleave','drop'].forEach(ev=>$('odrop').addEventListener(ev, e=>{
+  e.preventDefault(); $('odrop').classList.remove('over');
+}));
+$('odrop').addEventListener('drop', e=>pickFile(e.dataTransfer.files[0]));
+
+$('oupload').addEventListener('click', ()=>{
+  if(!otaFile) return;
+  if(!confirm('Flash ' + otaFile.name + ' and reboot the board?')) return;
+  otaError('');
+  $('oupload').disabled = true;
+  $('oprog').classList.add('on');
+
+  // XHR rather than fetch: only XHR reports upload progress, and a 1.2 MB
+  // transfer to an ESP32 is slow enough that a bar is the difference between
+  // waiting and pulling the power halfway through.
+  const form = new FormData();
+  form.append('firmware', otaFile, otaFile.name);
+  const xhr = new XMLHttpRequest();
+  xhr.open('POST', '/api/ota');
+  const key = $('okey').value;
+  if(key) xhr.setRequestHeader('X-OTA-Key', key);
+  xhr.upload.onprogress = e=>{
+    if(!e.lengthComputable) return;
+    const pct = Math.round(e.loaded / e.total * 100);
+    $('oprogBar').style.width = pct + '%';
+    $('oupload').textContent = 'Uploading ' + pct + '%';
+  };
+  xhr.onload = ()=>{
+    let d = {};
+    try{ d = JSON.parse(xhr.responseText); }catch(err){}
+    if(xhr.status === 200 && d.ok){
+      $('oupload').textContent = 'Rebooting…';
+      toast('Flashed — the board is restarting');
+      // It comes back on the same address; the page reloads itself once it does.
+      setTimeout(waitForBoard, 4000);
+    } else {
+      $('oprog').classList.remove('on');
+      $('oprogBar').style.width = '0';
+      $('oupload').textContent = 'Upload & reboot';
+      $('oupload').disabled = false;
+      otaError(d.error || ('Upload failed (HTTP ' + xhr.status + ')'));
+    }
+  };
+  xhr.onerror = ()=>{
+    $('oprog').classList.remove('on');
+    $('oupload').textContent = 'Upload & reboot';
+    $('oupload').disabled = false;
+    otaError('Lost contact with the board during the upload');
+  };
+  xhr.send(form);
+});
+
+function waitForBoard(){
+  fetch('/api/ota', {cache:'no-store'})
+    .then(r=>r.json())
+    .then(()=>location.reload())
+    .catch(()=>setTimeout(waitForBoard, 1500));
+}
+
+$('okeySave').addEventListener('click', ()=>{
+  const key = $('okey').value;
+  if(key && key.length < 4){ toast('Use at least 4 characters, or none at all'); return; }
+  $('okeySave').disabled = true;
+  fetch('/api/ota/key', {method:'POST', headers:{'Content-Type':'application/json'},
+                         body: JSON.stringify({key})})
+    .then(r=>r.json()).then(()=>{
+      $('okeySave').disabled = false;
+      $('okey').value = '';
+      toast(key ? 'Upload password set' : 'Upload password cleared');
+      loadOta();
+    }).catch(()=>{ $('okeySave').disabled = false; toast('Could not reach the board'); });
+});
+
 // ---------------------------------------------------------------- wi-fi
 let info = {}, pollTimer = 0, statusTimer = 0, scanTries = 0, scanned = false;
 
@@ -764,6 +952,7 @@ showTab((location.hash || '').replace('#','') ||
 loadSensors();
 loadCalibration();
 loadAlerts();
+loadOta();
 </script>
 </body>
 </html>

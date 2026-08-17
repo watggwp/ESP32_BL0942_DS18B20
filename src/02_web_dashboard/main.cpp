@@ -23,6 +23,7 @@
 #include "BL0942.h"
 #include "StatusLED.h"
 #include "alerts.h"
+#include "ota.h"
 #include "dashboard_html.h"
 #include "settings_html.h"
 #include "thermal_js.h"
@@ -334,6 +335,7 @@ static void setupRoutes() {
 
     WiFiPortal::registerRoutes(server);   // /api/wifi*, captive-portal catch-all
     Alerts::registerRoutes(server);       // /api/alerts, /api/alerts/test
+    OTA::registerRoutes(server);          // /api/ota, /api/ota/key
 
     server.addHandler(&events);
     server.begin();
@@ -368,6 +370,7 @@ void setup() {
 
     WiFiPortal::begin(DEVICE_HOSTNAME, [] { led.update(); });
     Alerts::begin();   // after Wi-Fi, so SNTP has somewhere to send its query
+    OTA::begin();
     setupRoutes();
 
     lastRead = lastEnergyReadMs = lastPersist = millis();
@@ -377,6 +380,7 @@ void loop() {
     led.update();
     WiFiPortal::loop();   // above the early return below -- the portal DNS is
                           // polled from here and starves if it is skipped
+    OTA::loop();          // same reason: a finished upload waits here to reboot
 
     if (rescanRequested) {
         rescanRequested = false;

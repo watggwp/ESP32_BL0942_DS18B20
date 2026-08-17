@@ -10,7 +10,7 @@
 // it from here, so a board in the field can be identified without a serial
 // cable. FIRMWARE_BUILD stamps the compile time, which is what tells two builds
 // of the same version apart while a change is being tested.
-#define FIRMWARE_VERSION "2.1.3"
+#define FIRMWARE_VERSION "2.2.3"
 #define FIRMWARE_BUILD   __DATE__ " " __TIME__
 
 // ---- BL0942 energy metering IC (UART2) -------------------------------------

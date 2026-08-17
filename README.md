@@ -122,6 +122,7 @@ once lives behind `/settings`, as three tabs of one page:
 | **Calibration** | tune BL0942 kI/kV/kP against a real meter next to a live V/A/W readout; reset the kWh total |
 | **Alerts** | push a LINE message when temperature, voltage, frequency, current or power leaves its band (below) |
 | **Wi-Fi** | join a new network from a phone, see what the board is connected to (below) |
+| **Firmware** | upload a new `.bin` over the air, with an optional upload password (below) |
 
 `/wifi` opens that same page on the Wi-Fi tab — the captive portal and the
 setup-mode redirect point there, so labels and QR codes printed with that URL
@@ -325,6 +326,37 @@ Alerts carry a wall-clock time, so the firmware runs an SNTP client
 (`NTP_SERVER_1`, `NTP_TZ` in `config.h`). Before the first sync a message falls
 back to `uptime 3h12m` rather than claiming a time it does not know.
 
+### Firmware updates (OTA)
+
+The Firmware tab takes a `.bin` from the browser and reflashes the board. Upload
+**`firmware.bin`** and nothing else:
+
+```
+.pio/build/web_dashboard/
+  firmware.bin      ← this one
+  bootloader.bin    USB only, 0x1000
+  partitions.bin    USB only, 0x8000
+```
+
+`bootloader.bin` and `partitions.bin` live outside the app slots and OTA cannot
+write there. Uploading one would be a way to brick a board, so the handler checks
+the ESP32 magic byte (`0xE9`) on the first chunk and refuses anything else before
+erasing a single byte.
+
+The image goes into whichever slot is **not** running. A failed upload, a dropped
+Wi-Fi link or a power cut halfway through leaves the working firmware untouched
+and the board still boots — the bootloader only switches slots once a complete,
+verified image has been written. The reboot itself is deferred to `loop()`,
+because restarting inside the request handler would drop the socket before the
+browser learns the upload worked.
+
+An **upload password** is available and off by default. Every other setting on
+that page is a threshold or a credential; this one is arbitrary code execution,
+so it is the one worth locking on a shared network. It is sent as an `X-OTA-Key`
+header and checked before the first byte is written.
+
+> Changing `partitions_p1.csv` still needs a USB cable — see *Flash layout*.
+
 ### HTTP endpoints
 
 | Method | Path | Purpose |
@@ -343,6 +375,9 @@ back to `uptime 3h12m` rather than claiming a time it does not know.
 | GET | `/api/alerts` | thresholds + `{tokenSet, sentToday, clockOk, now, lastCode}` — **never the token itself** |
 | POST | `/api/alerts` | set thresholds; `token` is only written when non-empty, so a blank field keeps the saved one |
 | POST | `/api/alerts/test` | queue a test LINE message |
+| GET | `/api/ota` | `{fw, build, running, target, targetSize, sketch, keySet}` |
+| POST | `/api/ota` | multipart `firmware.bin`; `X-OTA-Key` header when a password is set |
+| POST | `/api/ota/key` | `{"key":"…"}`, empty clears it |
 | GET | `/api/wifi` | `{portal, connected, ssid, ip, rssi, host, ap, saved, fw, build}` |
 | POST | `/api/wifi` | `{"ssid","pass"}`, persists to NVS and reboots |
 | GET | `/api/wifi/scan` | last scan result, or `{"scanning":true}`; `?force=1` restarts it |
@@ -463,6 +498,7 @@ python gen_esp32part.py parts.bin
 | `sensors` | `map` (JSON: addresses + names in slot order) | on save from `/settings` |
 | `wifi` | `ssid`, `pass` | on save or forget from `/wifi` |
 | `alerts` | thresholds, `to`, `token` | on save from the Alerts tab |
+| `ota` | `key` | on save from the Firmware tab |
 
 `pio run -t upload` does **not** touch NVS — it only rewrites the app partition,
 so calibration, sensor names and the Wi-Fi network all survive reflashing. You
@@ -537,6 +573,7 @@ src/
     main.cpp                Example 2: sensor slot map, routes, SSE push
     wifi_portal.h/.cpp      NVS credentials + captive-portal fallback (API only)
     alerts.h/.cpp           threshold engine + LINE Messaging API sender task
+    ota.h/.cpp              browser firmware upload into the spare app slot
     dashboard_html.h        the read-only dashboard page
     settings_html.h         /settings and /wifi -- sensors, calibration, alerts, Wi-Fi
     thermal_js.h            shared thermal colour ramp, served at /thermal.js
