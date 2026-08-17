@@ -185,7 +185,6 @@ footer{margin-top:22px;color:var(--muted);font-size:.75rem;text-align:center}
 
   <div class="card energy">
     <div><h2 style="margin-bottom:4px">Accumulated Energy</h2><div class="val" id="eVal">0.000 kWh</div></div>
-    <a class="navbtn" href="/settings#calibration">&#9889; Calibration &amp; reset</a>
   </div>
 
   <div class="card heatmap">

@@ -92,6 +92,7 @@
 // Alerts carry a wall-clock time, which uptime cannot give. Also what the daily
 // message cap counts days against.
 #define NTP_SERVER_1 "pool.ntp.org"
+
 #define NTP_SERVER_2 "time.google.com"
 #define NTP_TZ       "ICT-7"   // Thailand, UTC+7, no DST (POSIX TZ: sign inverted)
 
@@ -100,5 +101,5 @@
 // blue, MAX and above is deep red. Served to the page via /api/sensors, so this
 // is the single place the range is defined -- the colour and the little bar under
 // each card are both scaled from it.
-#define TEMP_COLOR_MIN_C   10
-#define TEMP_COLOR_MAX_C   80
+#define TEMP_COLOR_MIN_C   20
+#define TEMP_COLOR_MAX_C   50
