@@ -233,6 +233,15 @@ void buildTbUrl(const char *title, const char *version, char *out, size_t size) 
 void checkVersion(const char *target, const char *url, const char *title) {
     if (!target || !target[0]) return;
 
+    // The server naming a version is the one look this boot gets, and it is
+    // spent here -- before the branches below, so that a target which happens
+    // to match what is already running spends it too. Leaving the window open
+    // on a match is exactly what let a package assigned an hour later download
+    // itself with nobody there: the board was up to date at boot, said so, and
+    // then sat waiting with its window open.
+    const bool armed = fwArmed;
+    fwArmed = false;
+
     if (strcmp(target, FIRMWARE_VERSION) == 0) {
         // On target. Forget any previous attempt so a future version is free to
         // be tried, and say so once rather than on every reconnect.
@@ -250,7 +259,7 @@ void checkVersion(const char *target, const char *url, const char *title) {
 
     // Outside the boot window: the server is offering something, and a restart
     // is what takes it. Nothing is fetched, the note says what is waiting.
-    if (!fwArmed) {
+    if (!armed) {
         if (!fwDeferLogged) {
             fwDeferLogged = true;
             snprintf(fwNote, sizeof(fwNote),
@@ -259,7 +268,6 @@ void checkVersion(const char *target, const char *url, const char *title) {
         }
         return;
     }
-    fwArmed = false;        // one look per boot; a failed download re-arms it below
     fwDeferLogged = false;
 
     // Same target as last time and the attempts are spent. Two very different
@@ -312,7 +320,9 @@ void checkVersion(const char *target, const char *url, const char *title) {
 
 // Shared attributes arrive in two shapes: pushed as a flat object when they
 // change, and wrapped in {"shared":{...}} when they come back from a request.
-void handleAttributes(JsonDocument &doc) {
+// isResponse: this is the server answering the request the board made on its
+// first connection, rather than an attribute pushed at it later.
+void handleAttributes(JsonDocument &doc, bool isResponse) {
     JsonVariantConst shared = doc["shared"];
 
     // ThingsBoard's OTA repository keys first, then the plain-broker aliases.
@@ -326,6 +336,16 @@ void handleAttributes(JsonDocument &doc) {
     if (!version[0]) version = doc["fw_target"] | "";
 
     if (version[0] || url[0]) checkVersion(version, url, title);
+
+    // The answer to the boot request closes the window even when it named no
+    // firmware at all -- a board with no package assigned is the normal case,
+    // and it must not be left waiting with the window open for whatever gets
+    // assigned later in the day.
+    if (isResponse && fwArmed) {
+        fwArmed = false;
+        Serial.println("MQTT: firmware target answered -- the update window is closed "
+                       "until the next restart");
+    }
 }
 
 
@@ -346,7 +366,7 @@ void onMessage(char *topic, uint8_t *payload, unsigned int len) {
     // plain broker this also catches our own attribute publish echoing back,
     // which carries no fw_target and so falls through harmlessly.
     if (cfg.attrTopic[0] && strncmp(topic, cfg.attrTopic, strlen(cfg.attrTopic)) == 0) {
-        handleAttributes(doc);
+        handleAttributes(doc, strstr(topic, "/response/") != nullptr);
         return;
     }
 

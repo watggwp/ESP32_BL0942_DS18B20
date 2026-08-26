@@ -15,7 +15,7 @@
 // considered up to date when both agree -- so this string has to be typed
 // identically into the Title field there.
 #define FIRMWARE_TITLE   "PEA-PowerMeter"
-#define FIRMWARE_VERSION "3.0.1"
+#define FIRMWARE_VERSION "3.0.9"
 #define FIRMWARE_BUILD   __DATE__ " " __TIME__
 
 // ---- BL0942 energy metering IC (UART2) -------------------------------------
@@ -97,7 +97,7 @@
 // image, and the board rolls back an update that was in fact fine. Long
 // enough to prove the firmware, short enough that the odds of a power cut
 // landing inside it stay small.
-#define OTA_VERIFY_UPTIME_S  120
+#define OTA_VERIFY_UPTIME_S  60
 #define OTA_MAX_ATTEMPTS     3
 // Gap before retrying a failed download, rather than waiting for the next
 // reconnect -- which on a healthy link may be hours away.

@@ -601,13 +601,12 @@ function mqttStatus(d){
   $('pEvery').textContent = d.interval;
   $('limAuto').classList.toggle('off', !d.attrTopic);
   if(d.fwTitle) $('mqFwTitle').textContent = '"' + d.fwTitle + '"';
-  const autoState = d.fwNote ? d.fwNote
-                 : d.fwTried ? ('last tried ' + d.fwTried)
-                 : ('running v' + (d.fw || '?'));
-  $('mqAutoState').textContent = autoState + (d.fwWindow
-      ? ' · ' + (d.fwWindow === 'open' ? 'checks once on the next connect'
-                                       : 'window closed until the next restart')
-      : '');
+  const detail = d.fwNote ? d.fwNote
+               : d.fwTried ? ('last tried ' + d.fwTried)
+               : ('running v' + (d.fw || '?'));
+  const win = d.fwWindow === 'open'   ? 'checks once on the next connect'
+            : d.fwWindow === 'closed' ? 'window closed until the next restart' : '';
+  $('mqAutoState').textContent = [detail, win].filter(Boolean).join(' · ');
   renderPayload($('pTele'), d.payload);
   renderPayload($('pAttr'), d.attrPayload);
   const bits = [];
