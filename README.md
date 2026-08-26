@@ -122,7 +122,7 @@ once lives behind `/settings`, as three tabs of one page:
 | **Calibration** | tune BL0942 kI/kV/kP against a real meter next to a live V/A/W readout; reset the kWh total |
 | **MQTT** | broker, credentials, topics and publish interval — ThingsBoard by default (below) |
 | **Wi-Fi** | join a new network from a phone, see what the board is connected to (below) |
-| **Firmware** | upload a new `.bin` over the air, with an optional upload password (below) |
+| **Firmware** | what is running, which slot it booted from, and where the rollback window stands (below) |
 
 `/wifi` opens that same page on the Wi-Fi tab — the captive portal and the
 setup-mode redirect point there, so labels and QR codes printed with that URL
@@ -369,7 +369,7 @@ which a self-hosted instance usually needs (`http://192.168.1.5:8080`).
 > update — nothing happens at all, which is the hardest kind of failure to chase.
 
 The board reports `current_fw_title` / `current_fw_version` on every connect and
-walks `fw_state` through `DOWNLOADING` → `UPDATED`, so the OTA page shows which
+walks `fw_state` through `DOWNLOADING` → `UPDATED`, so ThingsBoard shows which
 devices are current and which are not. On failure it sends `fw_state: FAILED`
 with `fw_error`.
 
@@ -431,34 +431,31 @@ no second check. `https://` URLs work, though the certificate is not verified.
 
 ### Firmware updates (OTA)
 
-The Firmware tab takes a `.bin` from the browser and reflashes the board. Upload
-**`firmware.bin`** and nothing else:
+**Updates come from ThingsBoard only.** There is no upload from the web UI and no
+upload password — the Firmware tab reports what is running and nothing served
+over HTTP can write flash. Two ways in, both covered under *MQTT* above:
 
-```
-.pio/build/web_dashboard/
-  firmware.bin      ← this one
-  bootloader.bin    USB only, 0x1000
-  partitions.bin    USB only, 0x8000
-```
+- assign a package to the device in **Advanced features → OTA updates** and turn
+  on *Follow the server's firmware version* on the MQTT tab, or
+- send an `fwUpdate` RPC carrying a `url`.
 
-`bootloader.bin` and `partitions.bin` live outside the app slots and OTA cannot
-write there. Uploading one would be a way to brick a board, so the handler checks
-the ESP32 magic byte (`0xE9`) on the first chunk and refuses anything else before
-erasing a single byte.
+Either way the board downloads the image itself, on a task of its own, and
+publishes `fw_state` back as it goes.
 
-The image goes into whichever slot is **not** running. A failed upload, a dropped
-Wi-Fi link or a power cut halfway through leaves the working firmware untouched
-and the board still boots — the bootloader only switches slots once a complete,
-verified image has been written. The reboot itself is deferred to `loop()`,
-because restarting inside the request handler would drop the socket before the
-browser learns the upload worked.
+The image goes into whichever slot is **not** running. A failed download, a
+dropped Wi-Fi link or a power cut halfway through leaves the working firmware
+untouched and the board still boots — the bootloader only switches slots once a
+complete, verified image has been written. The reboot itself is deferred to
+`loop()`, so the result reaches ThingsBoard before the board disappears.
 
-An **upload password** is available and off by default. Every other setting on
-that page is a threshold or a credential; this one is arbitrary code execution,
-so it is the one worth locking on a shared network. It is sent as an `X-OTA-Key`
-header and checked before the first byte is written.
+A freshly flashed image starts **on probation**: it is accepted only after
+`OTA_VERIFY_UPTIME_S` (120 s) of running *with Wi-Fi up*, and the bootloader puts
+the previous slot back otherwise. An update that boots into a crash loop, or
+comes up unable to reach the network, undoes itself with nobody present.
 
-> Changing `partitions_p1.csv` still needs a USB cable — see *Flash layout*.
+> `bootloader.bin` and `partitions.bin` live outside the app slots and OTA cannot
+> write there — changing `partitions_p1.csv` still needs a USB cable, see
+> *Flash layout*.
 
 ### HTTP endpoints
 
@@ -477,9 +474,7 @@ header and checked before the first byte is written.
 | POST | `/api/sensors/rescan` | re-run the OneWire scan and append new sensors |
 | GET | `/api/mqtt` | broker settings + `{connected, published, failures, passSet, error}`, plus `payload` and `attrPayload` — the exact JSON the next publish would send. Never the password |
 | POST | `/api/mqtt` | set broker/topics/interval/auto-update; blank `pass` keeps the stored one |
-| GET | `/api/ota` | `{fw, build, running, target, targetSize, sketch, keySet}` |
-| POST | `/api/ota` | multipart `firmware.bin`; `X-OTA-Key` header when a password is set |
-| POST | `/api/ota/key` | `{"key":"…"}`, empty clears it |
+| GET | `/api/ota` | `{fw, build, running, target, targetSize, sketch, verify}` — status only, there is no upload endpoint |
 | GET | `/api/wifi` | `{portal, connected, ssid, ip, rssi, host, ap, saved, fw, build}` |
 | POST | `/api/wifi` | `{"ssid","pass"}`, persists to NVS and reboots |
 | GET | `/api/wifi/scan` | last scan result, or `{"scanning":true}`; `?force=1` restarts it |
@@ -601,7 +596,6 @@ python gen_esp32part.py parts.bin
 | `sensors` | `map` (JSON: addresses + names in slot order) | on save from `/settings` |
 | `wifi` | `ssid`, `pass` | on save or forget from `/wifi` |
 | `mqtt` | broker, port, user, pass, client id, topics, interval, auto-update, last attempted `fw_target` | on save from the MQTT tab, and before each auto-update |
-| `ota` | `key` | on save from the Firmware tab |
 
 `pio run -t upload` does **not** touch NVS — it only rewrites the app partition,
 so calibration, sensor names and the Wi-Fi network all survive reflashing. You
@@ -680,7 +674,7 @@ src/
     main.cpp                Example 2: sensor slot map, routes, SSE push
     wifi_portal.h/.cpp      NVS credentials + captive-portal fallback (API only)
     mqtt.h/.cpp             telemetry publisher + firmware-by-URL command, own task
-    ota.h/.cpp              firmware upload from a browser, or pulled from a URL
+    ota.h/.cpp              firmware pulled from a URL (ThingsBoard), + rollback
     dashboard_html.h        the read-only dashboard page
     settings_html.h         /settings and /wifi -- sensors, calibration, MQTT, Wi-Fi
     thermal_js.h            shared thermal colour ramp, served at /thermal.js

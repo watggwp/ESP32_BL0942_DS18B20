@@ -1,12 +1,12 @@
 #pragma once
-// Over-the-air firmware update: upload a .bin from a browser and the board
-// reflashes itself and reboots into it. Served from the Firmware tab at
-// /settings, so a board in a cabinet can be updated by whoever is standing in
-// front of it with a phone, which is the same reason Wi-Fi and the sensor map
-// are set from there rather than compiled in.
+// Over-the-air firmware update, from ThingsBoard only. Something on the server
+// side names an image -- a package assigned to this device, or an fwUpdate RPC
+// carrying a URL -- and the board fetches and flashes it itself. There is no
+// upload from the web UI and no upload password: /api/ota reports what is
+// running and nothing served over HTTP can write flash.
 //
 // The image lands in whichever app slot is NOT running -- partitions_p1.csv keeps
-// two of 1856K each -- so a failed or interrupted upload leaves the working
+// two of 1856K each -- so a failed or interrupted download leaves the working
 // firmware untouched and the board still boots. The bootloader only switches
 // over once a complete, verified image has been written.
 //
@@ -20,6 +20,9 @@
 namespace OTA {
 
 void begin();
+
+// GET /api/ota only: version, build, which slot is running, and where the
+// rollback window stands. Read-only -- see the note above.
 void registerRoutes(AsyncWebServer &server);
 
 // ---- rollback -------------------------------------------------------------
@@ -31,9 +34,9 @@ Verify verifyState();
 uint32_t verifySecondsLeft();
 
 // ---- update from a URL ----------------------------------------------------
-// The other way in: something tells the board where an image is and the board
-// fetches it itself. Used by the MQTT command handler, so a fleet can be updated
-// without anyone opening a browser at each board.
+// The only way in: the MQTT handler works out where the image is -- from
+// ThingsBoard's fw_title/fw_version attributes or an fwUpdate RPC -- and the
+// board fetches it itself, so a fleet is updated from the server.
 //
 // The download runs on a task of its own -- it takes tens of seconds, and the
 // caller here is an MQTT callback that has a keepalive to answer.
@@ -47,9 +50,9 @@ const char *urlMessage();   // why it failed, or what it flashed
 // Marks the finished state as reported, so a watcher publishes it once.
 void clearUrlState();
 
-// Carries out the reboot that a finished upload asks for. Called from loop()
-// because restarting inside a request handler kills the connection before the
-// browser is told the upload succeeded.
+// Closes the rollback window once the image has proved itself, and carries out
+// the reboot a finished download asks for. Called from loop() so the result can
+// reach ThingsBoard before the board restarts.
 void loop();
 
 }  // namespace OTA

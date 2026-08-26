@@ -341,7 +341,7 @@ static void setupRoutes() {
 
     WiFiPortal::registerRoutes(server);   // /api/wifi*, captive-portal catch-all
     Mqtt::registerRoutes(server);         // /api/mqtt
-    OTA::registerRoutes(server);          // /api/ota, /api/ota/key
+    OTA::registerRoutes(server);          // /api/ota (status only)
 
     server.addHandler(&events);
     server.begin();
@@ -390,7 +390,7 @@ void loop() {
     led.update();
     WiFiPortal::loop();   // above the early return below -- the portal DNS is
                           // polled from here and starves if it is skipped
-    OTA::loop();          // same reason: a finished upload waits here to reboot
+    OTA::loop();          // same reason: a finished download waits here to reboot
 
     if (rescanRequested) {
         rescanRequested = false;
