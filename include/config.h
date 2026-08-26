@@ -10,7 +10,12 @@
 // it from here, so a board in the field can be identified without a serial
 // cable. FIRMWARE_BUILD stamps the compile time, which is what tells two builds
 // of the same version apart while a change is being tested.
-#define FIRMWARE_VERSION "2.2.4"
+// The package title ThingsBoard matches against. A firmware package in its
+// OTA repository carries a title AND a version, and the device is only
+// considered up to date when both agree -- so this string has to be typed
+// identically into the Title field there.
+#define FIRMWARE_TITLE   "PEA-PowerMeter"
+#define FIRMWARE_VERSION "2.6.0"
 #define FIRMWARE_BUILD   __DATE__ " " __TIME__
 
 // ---- BL0942 energy metering IC (UART2) -------------------------------------
@@ -114,7 +119,31 @@
 
 // Downloading and flashing an image takes tens of seconds, which is why it gets
 // a task of its own rather than running wherever the command arrived.
-#define OTA_URL_TASK_STACK   8192
+// How many times one target version may be attempted before the board gives
+// up on it. A download that never finished -- a dropped link, a power cut
+// halfway, a server that was not up yet -- deserves another go. An image
+// that flashes fine but does not contain the version it claims does not,
+// and that is the case that would otherwise loop for ever, so the same
+// counter bounds both.
+// How long a freshly flashed image must run before it is accepted for good.
+// ESP-IDF's bootloader marks an OTA image as pending on its first boot and
+// rolls back to the previous slot unless the app confirms it -- Arduino
+// normally confirms immediately, which only ever catches an image that
+// cannot boot at all. Holding the confirmation until the board has been up
+// this long AND has joined Wi-Fi covers what actually goes wrong instead:
+// a crash a few seconds in, a boot loop, an image that comes up but can no
+// longer reach the network.
+//
+// The cost of the window: a power cut inside it looks exactly like a failed
+// image, and the board rolls back an update that was in fact fine. Long
+// enough to prove the firmware, short enough that the odds of a power cut
+// landing inside it stay small.
+#define OTA_VERIFY_UPTIME_S  120
+#define OTA_MAX_ATTEMPTS     3
+// Gap before retrying a failed download, rather than waiting for the next
+// reconnect -- which on a healthy link may be hours away.
+#define OTA_RETRY_MS         60000
+#define OTA_URL_TASK_STACK   12288  // https download: mbedTLS is stack-hungry
 
 // ---- Clock (example 2) ---------------------------------------------------------
 // Alerts carry a wall-clock time, which uptime cannot give. Also what the daily

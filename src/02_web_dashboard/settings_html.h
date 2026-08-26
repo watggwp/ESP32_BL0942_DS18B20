@@ -140,6 +140,14 @@ input[type=checkbox]{width:auto;margin:0;accent-color:var(--accent)}
   overflow:hidden;margin-top:14px;display:none}
 .prog.on{display:block}
 .prog i{display:block;height:100%;width:0;background:var(--accent);transition:width .2s}
+.payload{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:12px 13px;
+  font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.72rem;line-height:1.6;
+  color:var(--text);white-space:pre-wrap;word-break:break-word;margin:0;max-height:230px;overflow:auto}
+.payload .k{color:var(--accent)}
+.payload .n{color:var(--muted);font-style:italic}
+.payload.empty{color:var(--muted);font-style:italic}
+.plabel{color:var(--muted);font-size:.72rem;text-transform:uppercase;letter-spacing:.5px;margin:14px 0 6px}
+.plabel:first-child{margin-top:0}
 .err{margin-top:12px;padding:10px 12px;border-radius:10px;background:rgba(239,107,107,.09);
   border:1px solid var(--bad);color:var(--bad);font-size:.78rem;line-height:1.5;
   font-family:ui-monospace,SFMono-Regular,Consolas,monospace;word-break:break-word}
@@ -383,6 +391,29 @@ footer{margin-top:22px;color:var(--muted);font-size:.75rem;text-align:center}
       <label for="mqAttr">Attributes &mdash; version, IP and sensor names on connect (empty = skip)</label>
       <input id="mqAttr" maxlength="78" autocomplete="off" spellcheck="false">
     </div>
+    <div class="field">
+      <label for="mqFwBase">Firmware download base &mdash; blank = <code>https://&lt;broker host&gt;</code></label>
+      <input id="mqFwBase" maxlength="78" autocomplete="off" spellcheck="false"
+             placeholder="only for self-hosted, e.g. http://192.168.1.5:8080">
+    </div>
+    <div class="lim" id="limAuto" style="border-top:1px solid var(--border);margin-top:8px">
+      <div class="nm"><input type="checkbox" id="mqAuto"> &#128260; Follow the server's firmware version</div>
+      <div class="in" id="mqAutoState">&mdash;</div>
+    </div>
+    <div class="tip" style="margin-top:6px">Works straight out of <b>ThingsBoard &rarr; Advanced features &rarr;
+      OTA updates</b>: upload a package there, assign it to this device, and ThingsBoard publishes
+      <b>fw_title</b> and <b>fw_version</b> as shared attributes. If the version differs from the one running,
+      the board downloads the package <b>from ThingsBoard itself</b> using its access token &mdash; nothing has
+      to be hosted anywhere. A package created with <i>Use external URL</i> sends <b>fw_url</b> instead and that
+      is used as given. On a plain broker, publish <b>fw_target</b> + <b>fw_url</b> to the attributes topic by
+      hand (set the retain flag, or the board forgets it on the next reconnect).
+      <br><br>The package <b>Title</b> in ThingsBoard must match <span id="mqFwTitle">this firmware's title</span>
+      exactly &mdash; ThingsBoard treats title and version together, and a mismatched title just means nothing
+      ever happens.
+      <br><br><b>A version is only ever attempted once.</b> If the board flashes it and comes back still on the
+      old version &mdash; a stale .bin, a version that was never bumped &mdash; it stops and reports
+      <b>fw_state: FAILED</b> instead of flashing in a loop for ever. Change the version to try again.</div>
+
     <div class="tip" style="margin-top:12px">A command is JSON with a URL in it, either ThingsBoard RPC
       <b>{"method":"fwUpdate","params":{"url":"http://&hellip;/firmware.bin"}}</b> or plain
       <b>{"url":"http://&hellip;/firmware.bin"}</b>. The board answers straight away, downloads, flashes the
@@ -393,6 +424,17 @@ footer{margin-top:22px;color:var(--muted);font-size:.75rem;text-align:center}
       <button class="btn primary" id="mqSave">Save &amp; reconnect</button>
     </div>
     <div class="err" id="mqErr" style="display:none"></div>
+  </div>
+
+  <div class="card">
+    <h2>What gets published</h2>
+    <div class="tip" style="margin-bottom:12px">Built the same way the real publish builds it, and shown
+      whether or not a broker is connected &mdash; so you can see what will go out before pointing the board
+      at anything. Refreshes while this tab is open.</div>
+    <div class="plabel">Telemetry &mdash; every <span id="pEvery">30</span>s</div>
+    <pre class="payload" id="pTele">&mdash;</pre>
+    <div class="plabel">Attributes &mdash; once per connect</div>
+    <pre class="payload" id="pAttr">&mdash;</pre>
   </div>
 </div>
 
@@ -440,6 +482,7 @@ footer{margin-top:22px;color:var(--muted);font-size:.75rem;text-align:center}
       <div class="slotbox"><div class="k">Built</div><div class="v" id="oBuilt">&mdash;</div></div>
       <div class="slotbox"><div class="k">Booted from</div><div class="v" id="oRun">&mdash;</div></div>
       <div class="slotbox"><div class="k">Image size</div><div class="v" id="oSize">&mdash;</div></div>
+      <div class="slotbox"><div class="k">Rollback</div><div class="v" id="oVerify">&mdash;</div></div>
     </div>
   </div>
 
@@ -456,6 +499,11 @@ footer{margin-top:22px;color:var(--muted);font-size:.75rem;text-align:center}
       <span class="tip" id="oTarget">&mdash;</span>
       <button class="btn primary" id="oupload" disabled>Upload &amp; reboot</button>
     </div>
+    <div class="tip" style="margin-top:12px">A freshly flashed image starts <b>on probation</b>: the
+      bootloader keeps the old one in the other slot and puts it back unless this one runs for
+      <b>two minutes with Wi-Fi up</b>. So an update that boots into a crash loop, or comes up unable to
+      reach the network, undoes itself with nobody present. Careful: a power cut inside that window looks
+      the same from the outside, and reverts an update that was actually fine.</div>
     <div class="tip" style="margin-top:12px">Upload <b>firmware.bin</b> only. <b>bootloader.bin</b> and
       <b>partitions.bin</b> live outside the app slots and can only be written over USB &mdash; the board
       rejects them here rather than bricking itself. The new image goes into the spare slot, so if the
@@ -726,7 +774,42 @@ $('atest').addEventListener('click', ()=>{
 });
 
 // ---------------------------------------------------------------- mqtt
+// Pretty-printed with the keys picked out, because the whole point is reading it
+// at a glance. textContent everywhere it could carry operator text -- a sensor
+// name goes into the attributes payload, and that is user input.
+function renderPayload(el, obj){
+  // A newline built rather than typed: this file is a C++ raw string literal,
+  // and an escape here is one more thing between the source and the browser.
+  const NL = String.fromCharCode(10);
+  if(!obj){ el.className = 'payload empty'; el.textContent = 'nothing yet'; return; }
+  el.className = 'payload';
+  el.textContent = '';
+  Object.keys(obj).forEach((k, i, all)=>{
+    const key = document.createElement('span');
+    key.className = 'k';
+    key.textContent = '  "' + k + '"';
+    el.appendChild(document.createTextNode(i === 0 ? '{' + NL : ''));
+    el.appendChild(key);
+    const v = obj[k];
+    const val = document.createElement('span');
+    if(v === null){ val.className = 'n'; val.textContent = ': null'; }
+    else val.textContent = ': ' + (typeof v === 'string' ? '"' + v + '"' : v);
+    el.appendChild(val);
+    el.appendChild(document.createTextNode((i < all.length - 1 ? ',' : '') + NL));
+  });
+  el.appendChild(document.createTextNode('}'));
+}
+
 function mqttStatus(d){
+  $('pEvery').textContent = d.interval;
+  $('mqAuto').checked = !!d.autoUpdate;
+  $('limAuto').classList.toggle('off', !d.autoUpdate);
+  if(d.fwTitle) $('mqFwTitle').textContent = '"' + d.fwTitle + '"';
+  $('mqAutoState').textContent = d.fwNote ? d.fwNote
+                               : d.fwTried ? ('last tried ' + d.fwTried)
+                               : ('running v' + (d.fw || '?'));
+  renderPayload($('pTele'), d.payload);
+  renderPayload($('pAttr'), d.attrPayload);
   const bits = [];
   bits.push(d.enabled ? (d.connected ? 'connected' : 'not connected') : 'disabled');
   bits.push(d.published + ' published');
@@ -751,6 +834,7 @@ function loadMqtt(){
     $('mqPub').value = d.pubTopic || '';
     $('mqSub').value = d.subTopic || '';
     $('mqAttr').value = d.attrTopic || '';
+    $('mqFwBase').value = d.fwBase || '';
     $('mqPass').placeholder = d.passSet ? 'saved — type a new one to replace it'
                                         : 'leave empty for ThingsBoard';
     mqttStatus(d);
@@ -773,9 +857,12 @@ $('mqSave').addEventListener('click', ()=>{
     clientId: $('mqCid').value.trim(),
     pubTopic: $('mqPub').value.trim(),
     subTopic: $('mqSub').value.trim(),
-    attrTopic: $('mqAttr').value.trim()
+    attrTopic: $('mqAttr').value.trim(),
+    autoUpdate: $('mqAuto').checked,
+    fwBase: $('mqFwBase').value.trim()
   };
   if(body.enabled && !body.host){ toast('A broker address is required'); return; }
+  if(body.autoUpdate && !body.attrTopic){ toast('Following the server version needs an attributes topic'); return; }
   if(!body.pubTopic){ toast('A telemetry topic is required'); return; }
   const pass = $('mqPass').value;
   if(pass) body.pass = pass;
@@ -819,6 +906,12 @@ function loadOta(){
     $('oBuilt').textContent = d.build;
     $('oRun').textContent = d.running;
     $('oSize').textContent = kb(d.sketch);
+    // "on probation" is the state worth noticing: the bootloader will put the
+    // previous image back if this one does not survive its window.
+    $('oVerify').textContent = d.verify === 'pending'
+        ? ('on probation · ' + (d.verifyLeft || 0) + 's left')
+        : d.verify === 'confirmed' ? 'confirmed' : '—';
+    $('oVerify').style.color = d.verify === 'pending' ? 'var(--warn)' : '';
     $('oTarget').textContent = 'goes into ' + d.target + ' · ' + kb(d.targetSize) + ' available';
     $('okeyState').textContent = d.keySet ? 'password set' : 'no password';
     $('okey').placeholder = d.keySet ? 'saved — type a new one, or save empty to clear'

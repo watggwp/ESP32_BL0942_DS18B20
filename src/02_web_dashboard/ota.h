@@ -22,6 +22,14 @@ namespace OTA {
 void begin();
 void registerRoutes(AsyncWebServer &server);
 
+// ---- rollback -------------------------------------------------------------
+// Where the running image stands with the bootloader. PENDING means this is the
+// first run of a freshly flashed image and it has not been accepted yet: reset
+// before it is, and the bootloader goes back to the previous slot on its own.
+enum class Verify : uint8_t { NOT_APPLICABLE, PENDING, CONFIRMED };
+Verify verifyState();
+uint32_t verifySecondsLeft();
+
 // ---- update from a URL ----------------------------------------------------
 // The other way in: something tells the board where an image is and the board
 // fetches it itself. Used by the MQTT command handler, so a fleet can be updated

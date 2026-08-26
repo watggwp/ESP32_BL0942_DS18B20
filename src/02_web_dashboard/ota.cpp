@@ -28,6 +28,9 @@ char     failure[96] = "";
 
 const esp_partition_t *targetSlot() { return esp_ota_get_next_update_partition(nullptr); }
 
+OTA::Verify verifyStateVal = OTA::Verify::NOT_APPLICABLE;
+uint32_t verifyDeadline = 0;
+
 // Stop the transfer and remember why. Everything after this in the same upload
 // is ignored, and the response handler turns it into an HTTP error the page can
 // actually show the operator.
@@ -139,6 +142,14 @@ void urlUpdateTask(void *) {
 
 }  // namespace
 
+// Overrides the weak default in the Arduino core (esp32-hal-misc.c). Returning
+// true stops initArduino() from calling esp_ota_mark_app_valid_cancel_rollback()
+// before setup() has even run -- which is what normally throws the rollback
+// window away in the first millisecond of the new image's life.
+extern "C" bool verifyRollbackLater() {
+    return true;
+}
+
 bool OTA::startFromUrl(const char *url) {
     if (urlStateVal == UrlState::RUNNING) {
         Serial.println("OTA: a url update is already running");
@@ -175,6 +186,21 @@ void OTA::begin() {
     prefs.begin("ota", false);
     prefs.getString("key", otaKey, sizeof(otaKey));
 
+    // A USB flash writes boot_app0 alongside the image and comes up already
+    // accepted, so this only ever fires after an over-the-air update.
+    const esp_partition_t *self = esp_ota_get_running_partition();
+    esp_ota_img_states_t state;
+    if (self && esp_ota_get_state_partition(self, &state) == ESP_OK &&
+        state == ESP_OTA_IMG_PENDING_VERIFY) {
+        verifyStateVal = OTA::Verify::PENDING;
+        verifyDeadline = millis() + (uint32_t)OTA_VERIFY_UPTIME_S * 1000UL;
+        Serial.printf("OTA: this image is on probation -- %us of healthy running "
+                      "plus Wi-Fi to keep it, otherwise the bootloader reverts\n",
+                      (unsigned)OTA_VERIFY_UPTIME_S);
+    } else {
+        verifyStateVal = OTA::Verify::CONFIRMED;
+    }
+
     const esp_partition_t *running = esp_ota_get_running_partition();
     const esp_partition_t *next = targetSlot();
     Serial.printf("OTA: running from %s, updates go to %s (%u bytes), password %s\n",
@@ -184,7 +210,29 @@ void OTA::begin() {
                   otaKey[0] ? "set" : "not set");
 }
 
+OTA::Verify OTA::verifyState() { return verifyStateVal; }
+
+uint32_t OTA::verifySecondsLeft() {
+    if (verifyStateVal != Verify::PENDING) return 0;
+    int32_t left = (int32_t)(verifyDeadline - millis());
+    return left > 0 ? (uint32_t)left / 1000 : 0;
+}
+
 void OTA::loop() {
+    // Accept the image only once it has actually worked for a while. Wi-Fi is
+    // part of the test on purpose: an image that boots but cannot get on the
+    // network is unreachable, and unreachable is the failure that OTA exists to
+    // avoid. Nothing here has to run for a rollback to happen -- a reset before
+    // this point is the signal, and a board too broken to reach this line is
+    // exactly the board that should be reverted.
+    if (verifyStateVal == Verify::PENDING && millis() >= verifyDeadline &&
+        WiFi.status() == WL_CONNECTED) {
+        if (esp_ota_mark_app_valid_cancel_rollback() == ESP_OK) {
+            verifyStateVal = Verify::CONFIRMED;
+            Serial.println("OTA: image confirmed, rollback window closed");
+        }
+    }
+
     if (rebootAt && millis() >= rebootAt) {
         Serial.println("OTA: rebooting into the new firmware");
         Serial.flush();
@@ -215,6 +263,9 @@ void OTA::registerRoutes(AsyncWebServer &server) {
         doc["targetSize"] = next ? next->size : 0;
         doc["sketch"] = ESP.getSketchSize();
         doc["keySet"] = otaKey[0] != '\0';
+        doc["verify"] = verifyStateVal == Verify::PENDING     ? "pending"
+                      : verifyStateVal == Verify::CONFIRMED   ? "confirmed" : "n/a";
+        if (verifyStateVal == Verify::PENDING) doc["verifyLeft"] = OTA::verifySecondsLeft();
         String out;
         serializeJson(doc, out);
         request->send(200, "application/json", out);

@@ -362,8 +362,16 @@ Telemetry payload:
 ```json
 {"voltage":230.1,"current":1.234,"power":283.9,"frequency":50.01,
  "energy":12.345,"heap":54436,"rssi":-58,"uptime":8412,
- "temp1":25.31,"temp2":null,"temp3":41.06, ...}
+ "temp1":25.31,"temp2":41.06,"temp3":null,"temp4":33.02,
+ "temp5":null,"temp6":null,"temp7":null,"temp8":null,"temp9":null}
 ```
+
+**All nine `tempN` keys go out every time**, fitted or not — the payload shape
+never changes. Dropping the key for a missing probe leaves the receiving end
+with no series for it at all, and then the key appears from nowhere the day
+somebody plugs one in: a dashboard built before that has no panel for it, and
+the history has a gap that reads as *nothing happened* rather than as *no sensor
+there*. A `null` records the difference.
 
 A **failed meter read publishes `null`, not `0`.** Zero volts and zero watts is a
 perfectly plausible reading — it is what a power cut looks like — so writing it
@@ -383,6 +391,81 @@ would cost a beat of the sampling clock.
 > PubSubClient's buffer defaults to **256 bytes** and it drops anything larger
 > without a word. Nine temperatures plus the electricals do not fit;
 > `MQTT_BUFFER_BYTES` raises it to 1024.
+
+#### Seeing what goes out
+
+The MQTT tab prints the **telemetry and attribute payloads exactly as they will
+be sent**, refreshed while the tab is open. They are built by the same functions
+the publisher uses, and built **whether or not a broker is connected** — so the
+payload can be checked before the board is ever pointed at one, which is when the
+question usually comes up.
+
+#### Following the server's firmware version
+
+Turn on **Follow the server's firmware version** in the MQTT tab and the board
+takes itself to whatever version the server says it should be on.
+
+**With ThingsBoard's OTA repository** (Advanced features → OTA updates) there is
+nothing to configure by hand. Upload a package, assign it to the device, and
+ThingsBoard publishes the shared attributes itself:
+
+| Attribute | Set by ThingsBoard |
+|---|---|
+| `fw_title` | the package title |
+| `fw_version` | the package version |
+| `fw_url` | **only** for a package created with *Use external URL* |
+
+If the package holds the `.bin`, **nothing has to be hosted anywhere** — the
+board fetches it from ThingsBoard with its own access token:
+
+```
+https://<host>/api/v1/<access token>/firmware?title=PEA-PowerMeter&version=2.5.2
+```
+
+The base is `https://<broker host>` unless *Firmware download base* is filled in,
+which a self-hosted instance usually needs (`http://192.168.1.5:8080`).
+
+> The package **Title** must equal `FIRMWARE_TITLE` exactly. ThingsBoard matches
+> title *and* version together, so a mismatched title produces no error and no
+> update — nothing happens at all, which is the hardest kind of failure to chase.
+
+The board reports `current_fw_title` / `current_fw_version` on every connect and
+walks `fw_state` through `DOWNLOADING` → `UPDATED`, so the OTA page shows which
+devices are current and which are not. On failure it sends `fw_state: FAILED`
+with `fw_error`.
+
+**On a plain broker** there is no repository, so publish the attributes yourself:
+
+```
+topic:   v1/devices/me/attributes          (set the RETAIN flag)
+payload: {"fw_target":"2.5.2","fw_url":"http://192.168.1.10:8000/firmware.bin"}
+```
+
+Retain matters: without it the message reaches only whoever is subscribed at that
+instant, and a board that reboots or drops its link never learns the target.
+ThingsBoard answers the board's request on reconnect and needs no retain.
+
+**A version is attempted once and only once.** This is the part worth
+understanding: point the server at a version the `.bin` does not actually contain
+— a typo, a stale file, a build where the version was never bumped — and the
+obvious implementation flashes, reboots, compares, and flashes again, for ever,
+across every board at once. So the target is written to NVS **before** the
+download starts, survives the reboot that follows, and a target already attempted
+is refused rather than chased:
+
+```json
+{"fw_state":"FAILED","current_fw_version":"2.5.1",
+ "fw_error":"tried 2.5.2, still on 2.5.1 -- check the .bin"}
+```
+
+A genuine update needs no cleanup — the record clears itself the moment the
+running version matches. To retry after a bad `.bin`, publish a different
+version, or use the RPC command, which bypasses the check entirely.
+
+> `fw_checksum` from ThingsBoard is **not** verified. The ESP32 image carries its
+> own checksum and `Update.end(true)` refuses a corrupt one, so a damaged
+> download cannot be booted — but the board does not confirm the bytes match the
+> package ThingsBoard holds.
 
 #### Firmware update by MQTT command
 
@@ -457,8 +540,8 @@ header and checked before the first byte is written.
 | GET | `/api/alerts` | thresholds + `{tokenSet, sentToday, clockOk, now, lastCode}` — **never the token itself** |
 | POST | `/api/alerts` | set thresholds; `token` is only written when non-empty, so a blank field keeps the saved one |
 | POST | `/api/alerts/test` | queue a test LINE message |
-| GET | `/api/mqtt` | broker settings + `{connected, published, failures, passSet, error}` — never the password |
-| POST | `/api/mqtt` | set broker/topics/interval; blank `pass` keeps the stored one |
+| GET | `/api/mqtt` | broker settings + `{connected, published, failures, passSet, error}`, plus `payload` and `attrPayload` — the exact JSON the next publish would send. Never the password |
+| POST | `/api/mqtt` | set broker/topics/interval/auto-update; blank `pass` keeps the stored one |
 | GET | `/api/ota` | `{fw, build, running, target, targetSize, sketch, keySet}` |
 | POST | `/api/ota` | multipart `firmware.bin`; `X-OTA-Key` header when a password is set |
 | POST | `/api/ota/key` | `{"key":"…"}`, empty clears it |
@@ -530,6 +613,7 @@ All of `include/config.h`, shared by both environments:
 | `MQTT_RECONNECT_MS` | 8000 | gap between connection attempts |
 | `MQTT_TASK_STACK` | 6144 | MQTT client task |
 | `OTA_URL_TASK_STACK` | 8192 | download-and-flash task |
+| `FIRMWARE_TITLE` | `"PEA-PowerMeter"` | package title ThingsBoard matches against — must be typed identically there |
 | `NTP_SERVER_1` / `NTP_SERVER_2` | pool.ntp.org / time.google.com | clock for alert timestamps and the daily cap |
 | `NTP_TZ` | `"ICT-7"` | POSIX TZ — Thailand, UTC+7, no DST (sign is inverted) |
 | `TEMP_COLOR_MIN_C` | 10 | coldest end of the thermal ramp |
@@ -589,7 +673,7 @@ python gen_esp32part.py parts.bin
 | `sensors` | `map` (JSON: addresses + names in slot order) | on save from `/settings` |
 | `wifi` | `ssid`, `pass` | on save or forget from `/wifi` |
 | `alerts` | thresholds, `to`, `token` | on save from the Alerts tab |
-| `mqtt` | broker, port, user, pass, client id, topics, interval | on save from the MQTT tab |
+| `mqtt` | broker, port, user, pass, client id, topics, interval, auto-update, last attempted `fw_target` | on save from the MQTT tab, and before each auto-update |
 | `ota` | `key` | on save from the Firmware tab |
 
 `pio run -t upload` does **not** touch NVS — it only rewrites the app partition,
