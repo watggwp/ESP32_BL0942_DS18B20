@@ -24,7 +24,6 @@ struct Config {
     char     subTopic[80]  = MQTT_DEF_SUB_TOPIC;
     char     attrTopic[80] = MQTT_DEF_ATTR_TOPIC;   // empty = do not publish attributes
     uint16_t intervalS = MQTT_DEF_INTERVAL_S;
-    bool     autoUpdate = false;   // act on the server's firmware attributes
     char     fwBase[80] = "";     // empty = https://<broker host>
 };
 Config cfg;
@@ -76,7 +75,6 @@ void defaultClientId(char *out, size_t size) {
 void load() {
     prefs.begin("mqtt", false);
     cfg.enabled    = prefs.getBool("on", false);
-    cfg.autoUpdate = prefs.getBool("auto", false);
     prefs.getString("tried", fwTried, sizeof(fwTried));
     fwTries = prefs.getUChar("trycnt", 0);
     cfg.port      = prefs.getUShort("port", MQTT_DEF_PORT);
@@ -96,7 +94,6 @@ void load() {
 
 void save() {
     prefs.putBool("on", cfg.enabled);
-    prefs.putBool("auto", cfg.autoUpdate);
     prefs.putUShort("port", cfg.port);
     prefs.putUShort("every", cfg.intervalS);
     prefs.putString("host", cfg.host);
@@ -215,8 +212,12 @@ void buildTbUrl(const char *title, const char *version, char *out, size_t size) 
              cfg.user, t, v);
 }
 
+// Always armed: a board that is told which version it should be on takes itself
+// there. There is no switch for it because the alternative -- a fleet sitting on
+// firmware nobody can push -- is the failure this exists to prevent, and the
+// server is already the thing deciding whether an update happens at all.
 void checkVersion(const char *target, const char *url, const char *title) {
-    if (!cfg.autoUpdate || !target || !target[0]) return;
+    if (!target || !target[0]) return;
 
     if (strcmp(target, FIRMWARE_VERSION) == 0) {
         // On target. Forget any previous attempt so a future version is free to
@@ -506,7 +507,7 @@ bool tryConnect() {
     // attribute topic when someone changes them, and returned on .../response/
     // to a request we make now -- otherwise a board that was offline when the
     // target changed would never learn about it.
-    if (cfg.autoUpdate && cfg.attrTopic[0]) {
+    if (cfg.attrTopic[0]) {
         char sub[96], req[96];
         snprintf(sub, sizeof(sub), "%s/response/+", cfg.attrTopic);
         client.subscribe(cfg.attrTopic);
@@ -549,7 +550,7 @@ void task(void *) {
         // target, checkVersion sees attempts left, and the download starts over.
         if (fwRetryAt && millis() >= fwRetryAt) {
             fwRetryAt = 0;
-            if (cfg.autoUpdate && cfg.attrTopic[0]) {
+            if (cfg.attrTopic[0]) {
                 char req[96];
                 snprintf(req, sizeof(req), "%s/request/1", cfg.attrTopic);
                 client.publish(req, "{\"sharedKeys\":\"fw_title,fw_version,fw_url,fw_target\"}");
@@ -620,7 +621,6 @@ void Mqtt::registerRoutes(AsyncWebServer &server) {
         doc["published"] = published;
         doc["failures"] = failures;
         if (lastError[0]) doc["error"] = lastError;
-        doc["autoUpdate"] = cfg.autoUpdate;
         doc["fwBase"] = cfg.fwBase;
         doc["fwTitle"] = FIRMWARE_TITLE;
         doc["fw"] = FIRMWARE_VERSION;
@@ -648,7 +648,6 @@ void Mqtt::registerRoutes(AsyncWebServer &server) {
             JsonObject o = json.as<JsonObject>();
 
             cfg.enabled = o["enabled"] | false;
-            cfg.autoUpdate = o["autoUpdate"] | false;
             strlcpy(cfg.fwBase, o["fwBase"] | "", sizeof(cfg.fwBase));
             cfg.port = o["port"] | (uint16_t)MQTT_DEF_PORT;
             cfg.intervalS = o["interval"] | (uint16_t)MQTT_DEF_INTERVAL_S;

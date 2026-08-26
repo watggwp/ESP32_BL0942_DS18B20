@@ -312,10 +312,13 @@ footer{margin-top:22px;color:var(--muted);font-size:.75rem;text-align:center}
              placeholder="only for self-hosted, e.g. http://192.168.1.5:8080">
     </div>
     <div class="lim" id="limAuto" style="border-top:1px solid var(--border);margin-top:8px">
-      <div class="nm"><input type="checkbox" id="mqAuto"> &#128260; Follow the server's firmware version</div>
+      <div class="nm">&#128260; Follows the server's firmware version <b>always</b></div>
       <div class="in" id="mqAutoState">&mdash;</div>
     </div>
-    <div class="tip" style="margin-top:6px">Works straight out of <b>ThingsBoard &rarr; Advanced features &rarr;
+    <div class="tip" style="margin-top:6px">There is no switch for this: a board that is told which version it
+      should be on takes itself there. The server is already the thing that decides whether an update happens
+      at all &mdash; assign a package, or do not.
+      <br><br>Works straight out of <b>ThingsBoard &rarr; Advanced features &rarr;
       OTA updates</b>: upload a package there, assign it to this device, and ThingsBoard publishes
       <b>fw_title</b> and <b>fw_version</b> as shared attributes. If the version differs from the one running,
       the board downloads the package <b>from ThingsBoard itself</b> using its access token &mdash; nothing has
@@ -403,12 +406,11 @@ footer{margin-top:22px;color:var(--muted);font-size:.75rem;text-align:center}
 
   <div class="card">
     <h2>How this board is updated</h2>
-    <div class="tip">Firmware comes from <b>ThingsBoard only</b> &mdash; there is no upload from this page and
-      no password to keep. Upload a package under <b>Advanced features &rarr; OTA updates</b>, assign it to
-      this device, and the board downloads and flashes it itself. Turn on <b>Follow the server's firmware
-      version</b> on the MQTT tab, or send an <code>fwUpdate</code> RPC with a <code>url</code>.
-      Flashing over USB
-      (<code>pio run -t upload</code>) still works with the board in hand.</div>
+    <div class="tip">Firmware comes from <b>ThingsBoard only</b> &mdash; there is no upload from this page
+      and no password to keep. Upload a package under <b>Advanced features &rarr; OTA updates</b> and assign it
+      to this device; the board sees the version, downloads the image itself and flashes it. No switch to turn
+      on, nothing to press here. An <code>fwUpdate</code> RPC carrying a <code>url</code> does the same thing
+      on a plain broker. Flashing over USB (<code>pio run -t upload</code>) still works with the board in hand.</div>
     <div class="tip" style="margin-top:12px">A freshly flashed image starts <b>on probation</b>: the
       bootloader keeps the old one in the other slot and puts it back unless this one runs for
       <b>two minutes with Wi-Fi up</b>. So an update that boots into a crash loop, or comes up unable to
@@ -592,8 +594,7 @@ function renderPayload(el, obj){
 
 function mqttStatus(d){
   $('pEvery').textContent = d.interval;
-  $('mqAuto').checked = !!d.autoUpdate;
-  $('limAuto').classList.toggle('off', !d.autoUpdate);
+  $('limAuto').classList.toggle('off', !d.attrTopic);
   if(d.fwTitle) $('mqFwTitle').textContent = '"' + d.fwTitle + '"';
   $('mqAutoState').textContent = d.fwNote ? d.fwNote
                                : d.fwTried ? ('last tried ' + d.fwTried)
@@ -648,11 +649,10 @@ $('mqSave').addEventListener('click', ()=>{
     pubTopic: $('mqPub').value.trim(),
     subTopic: $('mqSub').value.trim(),
     attrTopic: $('mqAttr').value.trim(),
-    autoUpdate: $('mqAuto').checked,
     fwBase: $('mqFwBase').value.trim()
   };
   if(body.enabled && !body.host){ toast('A broker address is required'); return; }
-  if(body.autoUpdate && !body.attrTopic){ toast('Following the server version needs an attributes topic'); return; }
+  if(!body.attrTopic){ toast('An attributes topic is required -- it is how firmware versions arrive'); return; }
   if(!body.pubTopic){ toast('A telemetry topic is required'); return; }
   const pass = $('mqPass').value;
   if(pass) body.pass = pass;

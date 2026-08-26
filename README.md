@@ -341,8 +341,10 @@ question usually comes up.
 
 #### Following the server's firmware version
 
-Turn on **Follow the server's firmware version** in the MQTT tab and the board
-takes itself to whatever version the server says it should be on.
+The board takes itself to whatever version the server says it should be on.
+**There is no switch for this** — a board that is told which version it should be
+on goes there. The server is already the thing that decides whether an update
+happens at all: assign a package, or do not.
 
 **With ThingsBoard's OTA repository** (Advanced features → OTA updates) there is
 nothing to configure by hand. Upload a package, assign it to the device, and
@@ -435,8 +437,7 @@ no second check. `https://` URLs work, though the certificate is not verified.
 upload password — the Firmware tab reports what is running and nothing served
 over HTTP can write flash. Two ways in, both covered under *MQTT* above:
 
-- assign a package to the device in **Advanced features → OTA updates** and turn
-  on *Follow the server's firmware version* on the MQTT tab, or
+- assign a package to the device in **Advanced features → OTA updates**, or
 - send an `fwUpdate` RPC carrying a `url`.
 
 Either way the board downloads the image itself, on a task of its own, and
@@ -473,7 +474,7 @@ comes up unable to reach the network, undoes itself with nobody present.
 | POST | `/api/sensors` | `{"sensors":[{"addr","name"}]}` in slot order, persists to NVS |
 | POST | `/api/sensors/rescan` | re-run the OneWire scan and append new sensors |
 | GET | `/api/mqtt` | broker settings + `{connected, published, failures, passSet, error}`, plus `payload` and `attrPayload` — the exact JSON the next publish would send. Never the password |
-| POST | `/api/mqtt` | set broker/topics/interval/auto-update; blank `pass` keeps the stored one |
+| POST | `/api/mqtt` | set broker/topics/interval; blank `pass` keeps the stored one |
 | GET | `/api/ota` | `{fw, build, running, target, targetSize, sketch, verify}` — status only, there is no upload endpoint |
 | GET | `/api/wifi` | `{portal, connected, ssid, ip, rssi, host, ap, saved, fw, build}` |
 | POST | `/api/wifi` | `{"ssid","pass"}`, persists to NVS and reboots |
@@ -595,7 +596,7 @@ python gen_esp32part.py parts.bin
 | `meter` | `kI`, `kV`, `kP`, `kwh` | on calibration save, energy reset, and every 60 s |
 | `sensors` | `map` (JSON: addresses + names in slot order) | on save from `/settings` |
 | `wifi` | `ssid`, `pass` | on save or forget from `/wifi` |
-| `mqtt` | broker, port, user, pass, client id, topics, interval, auto-update, last attempted `fw_target` | on save from the MQTT tab, and before each auto-update |
+| `mqtt` | broker, port, user, pass, client id, topics, interval, last attempted `fw_target` | on save from the MQTT tab, and before each update attempt |
 
 `pio run -t upload` does **not** touch NVS — it only rewrites the app partition,
 so calibration, sensor names and the Wi-Fi network all survive reflashing. You

@@ -15,7 +15,7 @@
 // considered up to date when both agree -- so this string has to be typed
 // identically into the Title field there.
 #define FIRMWARE_TITLE   "PEA-PowerMeter"
-#define FIRMWARE_VERSION "2.8.2"
+#define FIRMWARE_VERSION "2.9.5"
 #define FIRMWARE_BUILD   __DATE__ " " __TIME__
 
 // ---- BL0942 energy metering IC (UART2) -------------------------------------
