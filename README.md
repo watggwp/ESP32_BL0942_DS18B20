@@ -346,6 +346,20 @@ The board takes itself to whatever version the server says it should be on.
 on goes there. The server is already the thing that decides whether an update
 happens at all: assign a package, or do not.
 
+**It looks once per boot, and only then.** The request for the target goes out on
+the first broker connection after the power comes on or the reset button is
+pressed; from that point the board neither asks again nor acts on a target pushed
+at it. This is deliberate: Wi-Fi in a cabinet drops and comes back all day, and a
+board that re-checked on every reconnect could start a download — and the reboot
+that follows — at any hour with nobody there. A package assigned while the board
+is running is taken **at the next restart**. Two things are not held back: the
+remaining attempts of a download that already started (below), and an `fwUpdate`
+RPC, which is somebody deliberately asking.
+
+The MQTT tab shows where the window stands — *checks once on the next connect*, or
+*window closed until the next restart* — and names a target that is waiting for a
+restart.
+
 **With ThingsBoard's OTA repository** (Advanced features → OTA updates) there is
 nothing to configure by hand. Upload a package, assign it to the device, and
 ThingsBoard publishes the shared attributes itself:
@@ -439,6 +453,10 @@ over HTTP can write flash. Two ways in, both covered under *MQTT* above:
 
 - assign a package to the device in **Advanced features → OTA updates**, or
 - send an `fwUpdate` RPC carrying a `url`.
+
+The assigned-package route is checked **once per boot** — see *Following the
+server's firmware version* — so a dropped link that comes back never starts an
+update on its own. The RPC is never gated.
 
 Either way the board downloads the image itself, on a task of its own, and
 publishes `fw_state` back as it goes.

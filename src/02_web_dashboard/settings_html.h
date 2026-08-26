@@ -312,12 +312,17 @@ footer{margin-top:22px;color:var(--muted);font-size:.75rem;text-align:center}
              placeholder="only for self-hosted, e.g. http://192.168.1.5:8080">
     </div>
     <div class="lim" id="limAuto" style="border-top:1px solid var(--border);margin-top:8px">
-      <div class="nm">&#128260; Follows the server's firmware version <b>always</b></div>
+      <div class="nm">&#128260; Follows the server's firmware version <b>at every restart</b></div>
       <div class="in" id="mqAutoState">&mdash;</div>
     </div>
     <div class="tip" style="margin-top:6px">There is no switch for this: a board that is told which version it
       should be on takes itself there. The server is already the thing that decides whether an update happens
       at all &mdash; assign a package, or do not.
+      <br><br><b>The board only looks once, on the first broker connection after the power comes on or the
+      reset button is pressed.</b> After that it stops asking and ignores a target pushed at it &mdash; a Wi-Fi
+      link that drops and comes back never starts a download, so a flaky line cannot flash and reboot the meter
+      unattended. A package assigned while the board is running is taken at the next restart. An
+      <b>fwUpdate</b> command is never held back: that one is somebody deliberately asking for it.
       <br><br>Works straight out of <b>ThingsBoard &rarr; Advanced features &rarr;
       OTA updates</b>: upload a package there, assign it to this device, and ThingsBoard publishes
       <b>fw_title</b> and <b>fw_version</b> as shared attributes. If the version differs from the one running,
@@ -596,9 +601,13 @@ function mqttStatus(d){
   $('pEvery').textContent = d.interval;
   $('limAuto').classList.toggle('off', !d.attrTopic);
   if(d.fwTitle) $('mqFwTitle').textContent = '"' + d.fwTitle + '"';
-  $('mqAutoState').textContent = d.fwNote ? d.fwNote
-                               : d.fwTried ? ('last tried ' + d.fwTried)
-                               : ('running v' + (d.fw || '?'));
+  const autoState = d.fwNote ? d.fwNote
+                 : d.fwTried ? ('last tried ' + d.fwTried)
+                 : ('running v' + (d.fw || '?'));
+  $('mqAutoState').textContent = autoState + (d.fwWindow
+      ? ' · ' + (d.fwWindow === 'open' ? 'checks once on the next connect'
+                                       : 'window closed until the next restart')
+      : '');
   renderPayload($('pTele'), d.payload);
   renderPayload($('pAttr'), d.attrPayload);
   const bits = [];

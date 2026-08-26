@@ -38,6 +38,20 @@ char fwNote[96]  = "";   // why the last auto-update did not happen, for the UI
 uint8_t  fwTries = 0;    // attempts spent on fwTried, also in NVS
 uint32_t fwRetryAt = 0;  // when to ask the server again after a failure
 
+// THE UPDATE WINDOW IS A BOOT, NOT A CONNECTION. Wi-Fi in a meter cabinet drops
+// and comes back all day, and every reconnect used to ask the server again what
+// version this board should be on -- so a flapping link could start a download,
+// and the reboot that follows it, at any hour with nobody there. The window now
+// opens once per boot: the first broker connection after the power comes on or
+// the reset button is pressed asks, and from then on the board neither asks
+// again nor acts on a target pushed at it, until it is restarted. Two things
+// reopen it, both of them somebody's decision rather than the network's: the
+// remaining attempts of a download that already started, and an fwUpdate RPC,
+// which is not gated at all.
+bool fwArmed = true;        // false once the boot window is used, or lost with the link
+bool fwAsked = false;       // the target request went out on this connection
+bool fwDeferLogged = false; // an offer outside the window is reported once, not per push
+
 WiFiClient net;
 PubSubClient client(net);
 Mqtt::SlotNameFn slotName = nullptr;
@@ -233,6 +247,20 @@ void checkVersion(const char *target, const char *url, const char *title) {
         }
         return;
     }
+
+    // Outside the boot window: the server is offering something, and a restart
+    // is what takes it. Nothing is fetched, the note says what is waiting.
+    if (!fwArmed) {
+        if (!fwDeferLogged) {
+            fwDeferLogged = true;
+            snprintf(fwNote, sizeof(fwNote),
+                     "%s offered -- power-cycle or reset to take it (updates start at boot only)", target);
+            Serial.printf("MQTT: %s\n", fwNote);
+        }
+        return;
+    }
+    fwArmed = false;        // one look per boot; a failed download re-arms it below
+    fwDeferLogged = false;
 
     // Same target as last time and the attempts are spent. Two very different
     // failures land here -- a download that never finished, and an image that
@@ -505,16 +533,25 @@ bool tryConnect() {
 
     // Shared attributes come two ways and the board needs both: pushed on the
     // attribute topic when someone changes them, and returned on .../response/
-    // to a request we make now -- otherwise a board that was offline when the
-    // target changed would never learn about it.
+    // to a request -- otherwise a board that was offline when the target changed
+    // would never learn about it. That request goes out on the first connection
+    // after a boot and on no other: a reconnect still subscribes, so a target
+    // pushed at the board reaches the note in the UI, but nothing is asked for
+    // and nothing is fetched. See fwArmed.
     if (cfg.attrTopic[0]) {
         char sub[96], req[96];
         snprintf(sub, sizeof(sub), "%s/response/+", cfg.attrTopic);
         client.subscribe(cfg.attrTopic);
         client.subscribe(sub);
-        snprintf(req, sizeof(req), "%s/request/1", cfg.attrTopic);
-        client.publish(req, "{\"sharedKeys\":\"fw_title,fw_version,fw_url,fw_target\"}");
-        Serial.printf("MQTT: asked for fw_target/fw_url on %s\n", req);
+        if (fwArmed) {
+            snprintf(req, sizeof(req), "%s/request/1", cfg.attrTopic);
+            client.publish(req, "{\"sharedKeys\":\"fw_title,fw_version,fw_url,fw_target\"}");
+            Serial.printf("MQTT: asked for fw_target/fw_url on %s\n", req);
+            fwAsked = true;
+        } else {
+            Serial.println("MQTT: reconnected -- not asking for a firmware target, "
+                           "the boot update window is closed until the next restart");
+        }
     }
 
     reportCurrentFirmware();   // ThingsBoard's OTA page reads this
@@ -532,6 +569,15 @@ void task(void *) {
         }
 
         if (!client.connected()) {
+            // A link that drops is precisely what must not reopen the window.
+            // The session that asked for the target is over, and the next one
+            // asks for nothing: from here only a power-cycle or a reset -- or
+            // the retry below -- starts a download.
+            if (connectedFlag && fwArmed && fwAsked) {
+                fwArmed = false;
+                Serial.println("MQTT: link lost -- the boot update window is closed "
+                               "until the next restart");
+            }
             connectedFlag = false;
             uint32_t now = millis();
             if (now - lastAttemptMs >= MQTT_RECONNECT_MS || lastAttemptMs == 0) {
@@ -551,6 +597,11 @@ void task(void *) {
         if (fwRetryAt && millis() >= fwRetryAt) {
             fwRetryAt = 0;
             if (cfg.attrTopic[0]) {
+                // Reopens the window for what is left of the attempt budget:
+                // the board finishing what a boot already started, not a new
+                // update starting on its own.
+                fwArmed = true;
+                fwAsked = true;
                 char req[96];
                 snprintf(req, sizeof(req), "%s/request/1", cfg.attrTopic);
                 client.publish(req, "{\"sharedKeys\":\"fw_title,fw_version,fw_url,fw_target\"}");
@@ -627,6 +678,7 @@ void Mqtt::registerRoutes(AsyncWebServer &server) {
         if (fwTried[0]) doc["fwTried"] = fwTried;
         if (fwTries) doc["fwTries"] = fwTries;
         doc["fwMaxTries"] = OTA_MAX_ATTEMPTS;
+        doc["fwWindow"] = fwArmed ? "open" : "closed";
         if (fwNote[0]) doc["fwNote"] = fwNote;
 
         // Nested as real JSON, not as an escaped string, so the page can lay it
