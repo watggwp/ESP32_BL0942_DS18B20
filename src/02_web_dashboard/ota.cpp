@@ -111,7 +111,10 @@ void urlUpdateTask(void *) {
     t_httpUpdate_return ret;
     if (strncmp(pendingUrl, "https://", 8) == 0) {
         WiFiClientSecure secure;
-        secure.setInsecure();   // same trade-off as the LINE client -- see alerts.cpp
+        // TLS either way, but the certificate is not checked: a firmware URL
+        // usually points at the same broker the board already trusts, and
+        // pinning a CA here would need updating whenever it rotates.
+        secure.setInsecure();
         secure.setTimeout(20);
         ret = httpUpdate.update(secure, pendingUrl);
     } else {

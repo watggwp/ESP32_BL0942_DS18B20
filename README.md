@@ -120,7 +120,6 @@ once lives behind `/settings`, as three tabs of one page:
 |---|---|
 | **Sensors** | fix each DS18B20 to a slot and name it (below), with live temperatures beside each row |
 | **Calibration** | tune BL0942 kI/kV/kP against a real meter next to a live V/A/W readout; reset the kWh total |
-| **Alerts** | push a LINE message when temperature, voltage, frequency, current or power leaves its band (below) |
 | **MQTT** | broker, credentials, topics and publish interval — ThingsBoard by default (below) |
 | **Wi-Fi** | join a new network from a phone, see what the board is connected to (below) |
 | **Firmware** | upload a new `.bin` over the air, with an optional upload password (below) |
@@ -266,66 +265,6 @@ AP is off-channel, so a failed request there is the normal case, not an error.
 
 > The same off-channel effect means a dashboard open on the LAN may drop one SSE
 > beat while `/wifi` rescans. It reconnects on its own.
-
-### LINE alerts
-
-The board pushes a LINE message when a reading leaves its band. **LINE Notify is
-gone** — the service shut down on 31 March 2025, so anything built on
-`notify-api.line.me` no longer works. This talks to the **Messaging API**
-instead: create a LINE Official Account, then paste its channel access token and
-a destination ID (`U…` user, `C…` group, `R…` room) into the Alerts tab. Nothing
-about your LINE account is compiled in — token, destination and every threshold
-live in NVS.
-
-Watched, each switchable on its own: temperature per slot, voltage (low *and*
-high), frequency (low and high), current, active power.
-
-Messages go out as a **Flex Message** — a card laid out entirely from JSON, which
-is the only way to get something designed onto a phone from a board that has
-nowhere to host an image. A gradient header carries the reading at display size,
-a chip says how far past the limit it went, a meter bar shows it against that
-limit, and the readings behind it follow as rows. Red-magenta for a fault,
-teal-green for a recovery, so the two are told apart before a word is read.
-
-`docs/flex_card_preview.json` is the same card as static JSON — paste it into the
-[Flex Message Simulator](https://developers.line.biz/flex-simulator/) to see it,
-or to try a different layout before changing `buildBubble()` in `alerts.cpp`.
-
-**Quota is the binding constraint, not flash.** A LINE Official Account on the
-free plan sends only a few hundred messages a month and pushes count against it,
-so a reading hovering on a threshold could spend a month's allowance in an
-afternoon. Four things prevent that:
-
-| Guard | Effect | Where |
-|---|---|---|
-| Debounce | a reading must be out of range for `ALERT_CONFIRM_SAMPLES` reads (~5 s) before anything fires | `config.h` |
-| Hysteresis | it must come back a margin *inside* the limit before that alert can fire again | `config.h` |
-| Cooldown | minimum minutes between two messages from the same alert | Alerts tab |
-| Daily cap | a hard stop per calendar day | Alerts tab |
-
-Temperatures that cross together are reported as **one** message — nine probes on
-one heatsink tend to go over at the same moment, and nine separate pushes for one
-event is exactly how the quota disappears.
-
-Two more things worth knowing:
-
-- **A failed meter read holds the electrical alerts still.** A BL0942 that will
-  not answer reports zeros, which is indistinguishable from a total power
-  failure. The board knows the reading is *missing*, not that the voltage is
-  gone, so it says nothing rather than crying wolf.
-- **The TLS handshake runs on its own FreeRTOS task.** It blocks for a second or
-  more; on the loop task that would stall the SSE push and the portal DNS, and in
-  a request handler it would stall every open browser. `evaluate()` only queues
-  text.
-
-> The connection to `api.line.me` is TLS but the certificate is **not verified**
-> (`setInsecure()`). Traffic is encrypted, but a machine positioned to intercept
-> it could impersonate LINE and collect the token. Pin a root CA in
-> `alerts.cpp` if the board sits somewhere that matters.
-
-Alerts carry a wall-clock time, so the firmware runs an SNTP client
-(`NTP_SERVER_1`, `NTP_TZ` in `config.h`). Before the first sync a message falls
-back to `uptime 3h12m` rather than claiming a time it does not know.
 
 ### Showing the dashboard without a board
 
@@ -488,8 +427,7 @@ that, so the result arrives afterwards as telemetry instead:
 
 Anything that can publish to the command topic can run arbitrary code on the
 board, so the broker credentials are the real security boundary here — there is
-no second check. `https://` URLs work; the certificate is not verified, the same
-trade-off as the LINE client.
+no second check. `https://` URLs work, though the certificate is not verified.
 
 ### Firmware updates (OTA)
 
@@ -527,7 +465,7 @@ header and checked before the first byte is written.
 | Method | Path | Purpose |
 |---|---|---|
 | GET | `/` | dashboard page (redirects to `/wifi` in setup mode) |
-| GET | `/settings` | settings page — Sensors / Calibration / Alerts / Wi-Fi tabs |
+| GET | `/settings` | settings page — Sensors / Calibration / MQTT / Wi-Fi / Firmware tabs |
 | GET | `/wifi` | the same page, opened on the Wi-Fi tab |
 | GET | `/thermal.js` | shared colour-ramp helpers |
 | GET | `/events` | Server-Sent Events stream of live samples |
@@ -537,9 +475,6 @@ header and checked before the first byte is written.
 | GET | `/api/sensors` | `{version, fw, build, max, tmin, tmax, sensors:[{slot, addr, name, online}]}` |
 | POST | `/api/sensors` | `{"sensors":[{"addr","name"}]}` in slot order, persists to NVS |
 | POST | `/api/sensors/rescan` | re-run the OneWire scan and append new sensors |
-| GET | `/api/alerts` | thresholds + `{tokenSet, sentToday, clockOk, now, lastCode}` — **never the token itself** |
-| POST | `/api/alerts` | set thresholds; `token` is only written when non-empty, so a blank field keeps the saved one |
-| POST | `/api/alerts/test` | queue a test LINE message |
 | GET | `/api/mqtt` | broker settings + `{connected, published, failures, passSet, error}`, plus `payload` and `attrPayload` — the exact JSON the next publish would send. Never the password |
 | POST | `/api/mqtt` | set broker/topics/interval/auto-update; blank `pass` keeps the stored one |
 | GET | `/api/ota` | `{fw, build, running, target, targetSize, sketch, keySet}` |
@@ -600,12 +535,6 @@ All of `include/config.h`, shared by both environments:
 | `STATUS_LED_PIN` | 2 | status LED |
 | `STATUS_LED_ACTIVE_HIGH` | `true` | invert for boards that sink the LED |
 | `SENSOR_READ_INTERVAL_MS` | 1000 | sampling / SSE push period |
-| `ALERT_CONFIRM_SAMPLES` | 5 | consecutive out-of-range reads before an alert fires |
-| `ALERT_CLEAR_SAMPLES` | 5 | consecutive in-range reads before it clears |
-| `ALERT_HYST_*` | 2 °C / 5 V / 0.2 Hz / 0.5 A / 100 W | how far back inside the band a value must come before that alert can fire again |
-| `ALERT_MIN_FREE_HEAP` | 60000 | skip the push below this — a TLS handshake needs room |
-| `ALERT_TASK_STACK` | 8192 | sender task stack; mbedTLS handshakes are stack-hungry |
-| `ALERT_DEF_*` | 60 °C, 200–250 V, 49–51 Hz, 20 A, 4000 W | first-boot thresholds; editable at `/settings` afterwards |
 | `MQTT_DEF_PORT` | 1883 | broker port on a board never set up |
 | `MQTT_DEF_INTERVAL_S` | 30 | seconds between telemetry publishes |
 | `MQTT_DEF_PUB_TOPIC` etc. | ThingsBoard topic names | seed values for the MQTT tab |
@@ -614,7 +543,7 @@ All of `include/config.h`, shared by both environments:
 | `MQTT_TASK_STACK` | 6144 | MQTT client task |
 | `OTA_URL_TASK_STACK` | 8192 | download-and-flash task |
 | `FIRMWARE_TITLE` | `"PEA-PowerMeter"` | package title ThingsBoard matches against — must be typed identically there |
-| `NTP_SERVER_1` / `NTP_SERVER_2` | pool.ntp.org / time.google.com | clock for alert timestamps and the daily cap |
+| `NTP_SERVER_1` / `NTP_SERVER_2` | pool.ntp.org / time.google.com | SNTP servers for the wall clock |
 | `NTP_TZ` | `"ICT-7"` | POSIX TZ — Thailand, UTC+7, no DST (sign is inverted) |
 | `TEMP_COLOR_MIN_C` | 10 | coldest end of the thermal ramp |
 | `TEMP_COLOR_MAX_C` | 80 | hottest end (deep red at or above) |
@@ -624,9 +553,8 @@ All of `include/config.h`, shared by both environments:
 | `WIFI_PORTAL_AP_PASSWORD` | `""` | under 8 characters means an open network |
 
 Wi-Fi credentials are not in this table, or anywhere else in the source: they
-are entered at `/wifi` and stored in NVS. The same goes for the LINE channel
-access token and destination — `/settings` writes both, and the API never reads
-them back out.
+are entered at `/wifi` and stored in NVS. The same goes for the MQTT broker
+password — `/settings` writes it, and the API never reads it back out.
 
 ### Flash layout
 
@@ -651,7 +579,7 @@ backfill lands in the right place on the graph.
 
 **`nvs` keeps its offset and its size**, which is what makes this safe to apply
 to a board already in service: calibration, the kWh total, the sensor slot map,
-Wi-Fi credentials and the LINE settings all survive. Move `nvs` by one byte and
+Wi-Fi credentials and the MQTT settings all survive. Move `nvs` by one byte and
 every one of them is gone.
 
 > A table change cannot be delivered over OTA — OTA writes app slots, not the
@@ -672,7 +600,6 @@ python gen_esp32part.py parts.bin
 | `meter` | `kI`, `kV`, `kP`, `kwh` | on calibration save, energy reset, and every 60 s |
 | `sensors` | `map` (JSON: addresses + names in slot order) | on save from `/settings` |
 | `wifi` | `ssid`, `pass` | on save or forget from `/wifi` |
-| `alerts` | thresholds, `to`, `token` | on save from the Alerts tab |
 | `mqtt` | broker, port, user, pass, client id, topics, interval, auto-update, last attempted `fw_target` | on save from the MQTT tab, and before each auto-update |
 | `ota` | `key` | on save from the Firmware tab |
 
@@ -741,7 +668,6 @@ tools/
   make_mockup.py            builds the offline demo copy of the dashboard
 docs/
   dashboard-mockup.html     generated -- open in a browser, no board needed
-  flex_card_preview.json    the LINE alert card, for the Flex simulator
 include/
   config.h                  pin map + tunables shared by both examples
 lib/
@@ -753,11 +679,10 @@ src/
   02_web_dashboard/
     main.cpp                Example 2: sensor slot map, routes, SSE push
     wifi_portal.h/.cpp      NVS credentials + captive-portal fallback (API only)
-    alerts.h/.cpp           threshold engine + LINE Messaging API sender task
     mqtt.h/.cpp             telemetry publisher + firmware-by-URL command, own task
     ota.h/.cpp              firmware upload from a browser, or pulled from a URL
     dashboard_html.h        the read-only dashboard page
-    settings_html.h         /settings and /wifi -- sensors, calibration, alerts, Wi-Fi
+    settings_html.h         /settings and /wifi -- sensors, calibration, MQTT, Wi-Fi
     thermal_js.h            shared thermal colour ramp, served at /thermal.js
 ```
 

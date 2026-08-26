@@ -672,7 +672,7 @@ void Mqtt::registerRoutes(AsyncWebServer &server) {
                 return;
             }
 
-            // Same rule as the LINE token: blank keeps what is stored, because the
+            // A blank field keeps what is stored, because the
             // page is never shown the saved value and so cannot send it back.
             const char *pass = o["pass"] | "";
             if (pass[0]) strlcpy(cfg.pass, pass, sizeof(cfg.pass));

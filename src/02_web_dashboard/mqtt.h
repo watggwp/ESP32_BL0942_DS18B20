@@ -4,7 +4,7 @@
 // topic for a firmware update carrying a URL.
 //
 // Broker, credentials, topics and the interval are set at /settings and stored
-// in NVS -- nothing about the site is compiled in, same as Wi-Fi and LINE.
+// in NVS -- nothing about the site is compiled in, same as Wi-Fi.
 //
 // EVERYTHING HAPPENS ON A SEPARATE TASK. PubSubClient has no non-blocking
 // connect, so a broker that stops answering would otherwise freeze loop() -- and

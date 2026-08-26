@@ -22,7 +22,6 @@
 #include "config.h"
 #include "BL0942.h"
 #include "StatusLED.h"
-#include "alerts.h"
 #include "mqtt.h"
 #include "ota.h"
 #include "dashboard_html.h"
@@ -63,7 +62,7 @@ BL0942Data lastSample;
 // ---------------------------------------------------------------------------
 // Sensor slot map
 // ---------------------------------------------------------------------------
-// Shared by the alert engine and the MQTT attribute publish: both label a slot
+// Used by the MQTT attribute publish as well as the dashboard: a slot is labelled
 // with whatever the operator typed for it, and neither should own that lookup.
 static const char *slotNameOf(uint8_t slot) {
     return slot < slotCount ? slots[slot].name : "";
@@ -341,7 +340,6 @@ static void setupRoutes() {
     server.addHandler(sensorHandler);
 
     WiFiPortal::registerRoutes(server);   // /api/wifi*, captive-portal catch-all
-    Alerts::registerRoutes(server);       // /api/alerts, /api/alerts/test
     Mqtt::registerRoutes(server);         // /api/mqtt
     OTA::registerRoutes(server);          // /api/ota, /api/ota/key
 
@@ -377,7 +375,10 @@ void setup() {
     sensors.requestTemperatures();
 
     WiFiPortal::begin(DEVICE_HOSTNAME, [] { led.update(); });
-    Alerts::begin();   // after Wi-Fi, so SNTP has somewhere to send its query
+
+    // After Wi-Fi, so SNTP has somewhere to send its query. Safe either way --
+    // it syncs on its own once there is a network.
+    configTzTime(NTP_TZ, NTP_SERVER_1, NTP_SERVER_2);
     Mqtt::begin(slotNameOf);
     OTA::begin();
     setupRoutes();
@@ -430,8 +431,8 @@ void loop() {
 
     // Reads the conversion started on the previous cycle, so this returns
     // immediately instead of blocking for the 750ms it takes to run. Kept in a
-    // plain array as well as the JSON, because the alert engine judges the same
-    // numbers the page is about to draw -- one read, one truth.
+    // plain array as well as the JSON, because MQTT publishes the same numbers
+    // the page is about to draw -- one read, one truth.
     float tempC[DS18B20_COUNT];
     JsonArray temps = doc["temps"].to<JsonArray>();
     for (uint8_t i = 0; i < slotCount; i++) {
@@ -446,10 +447,8 @@ void loop() {
     }
     sensors.requestTemperatures();   // start the next one; ready a second from now
 
-    // Both of these only ever queue or copy: the TLS handshake and the MQTT
-    // publish happen on their own tasks, so nothing here waits on the network.
-    Alerts::evaluate(ok, lastSample.voltageV, lastSample.currentA, lastSample.activePowerW,
-                     lastSample.frequencyHz, tempC, slotCount, slotNameOf);
+    // Only ever queues or copies: the publish itself happens on the MQTT task,
+    // so nothing here waits on the network.
     Mqtt::sample(ok, lastSample.voltageV, lastSample.currentA, lastSample.activePowerW,
                  lastSample.frequencyHz, energyKWh, tempC, slotCount);
 
