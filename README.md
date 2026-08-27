@@ -679,6 +679,8 @@ platformio.ini              two environments: serial_monitor, web_dashboard
 partitions_p1.csv           4MB layout: 1856K app slots + 256K LittleFS
 tools/
   make_mockup.py            builds the offline demo copy of the dashboard
+  thingsboard/
+    thermal-map/            the dashboard's heat map as a ThingsBoard widget
 docs/
   dashboard-mockup.html     generated -- open in a browser, no board needed
 include/

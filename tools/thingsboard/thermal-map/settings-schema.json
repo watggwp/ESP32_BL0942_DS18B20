@@ -1,0 +1,71 @@
+{
+  "schema": {
+    "type": "object",
+    "title": "ThermalMapSettings",
+    "properties": {
+      "minTemp": {
+        "title": "Scale minimum (°C) — the cold end of the ramp",
+        "type": "number",
+        "default": 10
+      },
+      "maxTemp": {
+        "title": "Scale maximum (°C) — the hot end of the ramp",
+        "type": "number",
+        "default": 80
+      },
+      "cols": {
+        "title": "Columns",
+        "type": "number",
+        "default": 3
+      },
+      "rows": {
+        "title": "Rows",
+        "type": "number",
+        "default": 3
+      },
+      "serpentine": {
+        "title": "Serpentine mounting order (every second row runs right to left)",
+        "type": "boolean",
+        "default": true
+      },
+      "slotFromKeyNumber": {
+        "title": "Take the slot from the number ending the key name (temp7 → slot 7). Off: datasource order",
+        "type": "boolean",
+        "default": true
+      },
+      "showScale": {
+        "title": "Show the colour scale",
+        "type": "boolean",
+        "default": true
+      },
+      "showSlotNumbers": {
+        "title": "Number each slot",
+        "type": "boolean",
+        "default": true
+      },
+      "showTooltip": {
+        "title": "Show a tooltip on hover",
+        "type": "boolean",
+        "default": true
+      },
+      "decimals": {
+        "title": "Decimals on the circles",
+        "type": "number",
+        "default": 1
+      }
+    },
+    "required": []
+  },
+  "form": [
+    "minTemp",
+    "maxTemp",
+    "cols",
+    "rows",
+    "serpentine",
+    "slotFromKeyNumber",
+    "showScale",
+    "showSlotNumbers",
+    "showTooltip",
+    "decimals"
+  ]
+}
