@@ -20,7 +20,7 @@ StatusLED led;
 
 OneWire oneWire(ONEWIRE_PIN);
 DallasTemperature sensors(&oneWire);
-DeviceAddress sensorAddr[DS18B20_COUNT];
+DeviceAddress sensorAddr[DS18B20_SCAN_MAX];
 uint8_t sensorCount = 0;
 
 uint32_t lastRead = 0;
@@ -34,11 +34,17 @@ static void printAddress(const DeviceAddress addr) {
 
 static void scanDS18B20() {
     sensors.begin();
-    sensorCount = min((int)sensors.getDeviceCount(), DS18B20_COUNT);
+    // Enumerate past the nine channels on purpose: this is the tool you reach
+    // for when a probe is being swapped and you need to read the new ROM
+    // address off both of them at once.
+    sensorCount = min((int)sensors.getDeviceCount(), DS18B20_SCAN_MAX);
 
     Serial.printf("DS18B20: found %u device(s) on GPIO%d\n", sensorCount, ONEWIRE_PIN);
     if (sensorCount < DS18B20_COUNT) {
         Serial.printf("  (expected %u -- check wiring / 4.7k pull-up if fewer showed up)\n", DS18B20_COUNT);
+    } else if (sensorCount > DS18B20_COUNT) {
+        Serial.printf("  (%u more than the %u channels this board publishes -- assign one to a slot"
+                      " on the settings page)\n", sensorCount - DS18B20_COUNT, DS18B20_COUNT);
     }
 
     for (uint8_t i = 0; i < sensorCount; i++) {

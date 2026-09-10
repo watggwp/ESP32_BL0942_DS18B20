@@ -50,6 +50,15 @@ struct SensorSlot {
 };
 SensorSlot slots[DS18B20_COUNT];
 uint8_t slotCount = 0;
+
+// Sensors that answered the last bus scan but hold no slot, because the saved
+// map already fills all nine. Nothing publishes them -- their whole job is to
+// be visible on the settings page, so a probe plugged in beside a dead one can
+// be handed that dead one's slot (and its name, and its place on the dashboard)
+// instead of being silently ignored.
+DeviceAddress spares[DS18B20_SCAN_MAX];
+float   spareTempC[DS18B20_SCAN_MAX];
+uint8_t spareCount = 0;
 uint32_t configVersion = 1;   // bumped on every change so open pages refetch names
 volatile bool rescanRequested = false;
 
@@ -121,9 +130,9 @@ static uint8_t scanBus(DeviceAddress *out, uint8_t max) {
 // bus right now. Saved entries keep their slot even when the sensor is absent;
 // a sensor nobody has configured yet lands in the first free slot.
 static void applySensorMap() {
-    DeviceAddress found[DS18B20_COUNT];
-    uint8_t foundCount = scanBus(found, DS18B20_COUNT);
-    bool claimed[DS18B20_COUNT] = {false};
+    DeviceAddress found[DS18B20_SCAN_MAX];
+    uint8_t foundCount = scanBus(found, DS18B20_SCAN_MAX);
+    bool claimed[DS18B20_SCAN_MAX] = {false};
 
     memset(slots, 0, sizeof(slots));
     slotCount = 0;
@@ -158,16 +167,35 @@ static void applySensorMap() {
         SensorSlot &s = slots[slotCount];
         memcpy(s.addr, found[k], 8);
         s.online = true;
+        claimed[k] = true;
         slotCount++;
     }
 
-    Serial.printf("DS18B20: %u on the bus (GPIO%d), %u slot(s)\n", foundCount, ONEWIRE_PIN, slotCount);
+    // Whatever is left is on the bus with nowhere to sit. Dropping it here is
+    // what used to make a replacement probe invisible: the saved map still
+    // holds the dead sensor's slot, so the live one never gets claimed and its
+    // ROM address has no way of reaching the screen.
+    spareCount = 0;
+    for (uint8_t k = 0; k < foundCount; k++) {
+        if (claimed[k]) continue;
+        memcpy(spares[spareCount], found[k], 8);
+        spareTempC[spareCount] = NAN;
+        spareCount++;
+    }
+
+    Serial.printf("DS18B20: %u on the bus (GPIO%d), %u slot(s), %u spare\n",
+                  foundCount, ONEWIRE_PIN, slotCount, spareCount);
     for (uint8_t i = 0; i < slotCount; i++) {
         char hex[17];
         addrToHex(slots[i].addr, hex);
         Serial.printf("  slot %u  %s  %s%s\n", i, hex,
                       slots[i].name[0] ? slots[i].name : "(unnamed)",
                       slots[i].online ? "" : "   [offline]");
+    }
+    for (uint8_t i = 0; i < spareCount; i++) {
+        char hex[17];
+        addrToHex(spares[i], hex);
+        Serial.printf("  spare   %s  (on the bus, every slot taken)\n", hex);
     }
 }
 
@@ -216,6 +244,7 @@ static void sendSensorList(AsyncWebServerRequest *request) {
     doc["fw"] = FIRMWARE_VERSION;      // both pages that fetch this show it in
     doc["build"] = FIRMWARE_BUILD;     // their footer -- see config.h
     doc["max"] = DS18B20_COUNT;
+    doc["scanMax"] = DS18B20_SCAN_MAX;
     doc["tmin"] = TEMP_COLOR_MIN_C;   // ends of the thermal ramp, from config.h
     doc["tmax"] = TEMP_COLOR_MAX_C;
     JsonArray arr = doc["sensors"].to<JsonArray>();
@@ -227,6 +256,17 @@ static void sendSensorList(AsyncWebServerRequest *request) {
         o["addr"] = hex;
         o["name"] = slots[i].name;
         o["online"] = slots[i].online;
+    }
+    // Cached, not read here: a OneWire fetch belongs on loop(), which owns the
+    // bus. loop() refreshes these on the same cycle it reads the slots.
+    JsonArray sp = doc["spare"].to<JsonArray>();
+    for (uint8_t i = 0; i < spareCount; i++) {
+        char hex[17];
+        addrToHex(spares[i], hex);
+        JsonObject o = sp.add<JsonObject>();
+        o["addr"] = hex;
+        if (isnan(spareTempC[i])) o["temp"] = nullptr;
+        else                      o["temp"] = spareTempC[i];
     }
     String out;
     serializeJson(doc, out);
@@ -329,8 +369,57 @@ static void setupRoutes() {
                         break;
                     }
                 }
+                // A spare being moved into a slot held no slot a moment ago, so
+                // the loop above finds nothing for it -- but the scan did see
+                // it. Without this it would read as offline until the next
+                // rescan, which is exactly the moment the operator is watching
+                // to confirm the swap worked.
+                if (!rebuilt[n].online) {
+                    for (uint8_t k = 0; k < spareCount; k++) {
+                        if (memcmp(spares[k], addr, 8) == 0) {
+                            rebuilt[n].online = true;
+                            break;
+                        }
+                    }
+                }
                 n++;
             }
+
+            // Re-derive the spare list from the swap that just happened rather
+            // than rescanning: a bus search has no business running on the
+            // AsyncTCP task, and everything needed is already known here.
+            // An online sensor that just lost its slot becomes spare...
+            for (uint8_t k = 0; k < slotCount && spareCount < DS18B20_SCAN_MAX; k++) {
+                if (!slots[k].online) continue;   // gone from the bus: nothing to offer
+                bool stillSlotted = false;
+                for (uint8_t j = 0; j < n; j++) {
+                    if (memcmp(rebuilt[j].addr, slots[k].addr, 8) == 0) { stillSlotted = true; break; }
+                }
+                if (stillSlotted) continue;
+                bool already = false;
+                for (uint8_t j = 0; j < spareCount; j++) {
+                    if (memcmp(spares[j], slots[k].addr, 8) == 0) { already = true; break; }
+                }
+                if (already) continue;
+                memcpy(spares[spareCount], slots[k].addr, 8);
+                spareTempC[spareCount] = NAN;
+                spareCount++;
+            }
+            // ...and a spare that just took one stops being spare.
+            uint8_t keep = 0;
+            for (uint8_t j = 0; j < spareCount; j++) {
+                bool slotted = false;
+                for (uint8_t m = 0; m < n; m++) {
+                    if (memcmp(rebuilt[m].addr, spares[j], 8) == 0) { slotted = true; break; }
+                }
+                if (slotted) continue;
+                if (keep != j) {
+                    memcpy(spares[keep], spares[j], 8);
+                    spareTempC[keep] = spareTempC[j];
+                }
+                keep++;
+            }
+            spareCount = keep;
 
             memcpy(slots, rebuilt, sizeof(slots));
             slotCount = n;
@@ -445,6 +534,21 @@ void loop() {
             temps.add(c);
         }
     }
+    // Same conversion, same bus: requestTemperatures() is a broadcast, so a
+    // spare has a fresh reading waiting too. It is the only way to tell which
+    // of two identical-looking probes is the new one -- pinch it and watch.
+    JsonArray stemps = doc["stemps"].to<JsonArray>();
+    for (uint8_t i = 0; i < spareCount; i++) {
+        float c = sensors.getTempC(spares[i]);
+        if (c == DEVICE_DISCONNECTED_C) {
+            spareTempC[i] = NAN;
+            stemps.add(nullptr);
+        } else {
+            spareTempC[i] = c;
+            stemps.add(c);
+        }
+    }
+
     sensors.requestTemperatures();   // start the next one; ready a second from now
 
     // Only ever queues or copies: the publish itself happens on the MQTT task,

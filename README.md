@@ -154,11 +154,22 @@ ROM address and a name, stored in NVS:
 | All sensors present | Exactly the order you configured |
 | One sensor dies or unplugs | **Its own slot shows `offline`. Nothing else moves.** |
 | A new sensor appears | Appended to the first free slot, unnamed |
+| A new sensor appears, no slot free | Listed as a **spare** on the settings page — never published, never evicts a saved slot |
 | Never configured | Falls back to bus order — same as before, nothing breaks |
 | Stored map unreadable | Logs a warning, falls back to bus order |
 
 Open `/settings` (or the *configure* link on the temperature card) to reorder
 slots with ▲▼ and name each sensor. Names are UTF-8, so Thai works.
+
+**Replacing a dead probe.** A bus scan enumerates up to `DS18B20_SCAN_MAX` (16)
+devices, not nine, so the replacement you plug in beside a dying one is seen even
+though the saved map already fills every slot. It shows up under *On the bus, no
+slot free* with its own live reading — pinch it to be sure which it is — and
+**Use** hands it the slot of the sensor it replaces. The slot keeps its name and
+its position on the dashboard; the displaced sensor drops down to the spare list
+if it is still answering. Nothing is written until you press *Save order &
+names*, and nothing about MQTT changes: `temp1`..`temp9` are still the only keys
+published, so a ThingsBoard dashboard built for nine channels needs no edit.
 
 **Identifying a sensor:** a DS18B20 has no LED to blink, so the only way is to
 heat it. The settings page shows a **live temperature next to every row**, fed by
@@ -488,9 +499,9 @@ comes up unable to reach the network, undoes itself with nobody present.
 | GET | `/api/calibration` | current `{kI, kV, kP}` multipliers |
 | POST | `/api/calibration` | set `{kI, kV, kP}`, persists to NVS |
 | POST | `/api/energy/reset` | zero the accumulated kWh counter |
-| GET | `/api/sensors` | `{version, fw, build, max, tmin, tmax, sensors:[{slot, addr, name, online}]}` |
+| GET | `/api/sensors` | `{version, fw, build, max, scanMax, tmin, tmax, sensors:[{slot, addr, name, online}], spare:[{addr, temp}]}` |
 | POST | `/api/sensors` | `{"sensors":[{"addr","name"}]}` in slot order, persists to NVS |
-| POST | `/api/sensors/rescan` | re-run the OneWire scan and append new sensors |
+| POST | `/api/sensors/rescan` | re-run the OneWire scan; new sensors take a free slot, or join `spare` if none is |
 | GET | `/api/mqtt` | broker settings + `{connected, published, failures, passSet, error}`, plus `payload` and `attrPayload` — the exact JSON the next publish would send. Never the password |
 | POST | `/api/mqtt` | set broker/topics/interval; blank `pass` keeps the stored one |
 | GET | `/api/ota` | `{fw, build, running, target, targetSize, sketch, verify}` — status only, there is no upload endpoint |

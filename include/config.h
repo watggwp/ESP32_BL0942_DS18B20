@@ -15,7 +15,7 @@
 // considered up to date when both agree -- so this string has to be typed
 // identically into the Title field there.
 #define FIRMWARE_TITLE   "PEA-PowerMeter"
-#define FIRMWARE_VERSION "3.0.100"
+#define FIRMWARE_VERSION "3.0.101"
 #define FIRMWARE_BUILD   __DATE__ " " __TIME__
 
 // ---- BL0942 energy metering IC (UART2) -------------------------------------
@@ -33,8 +33,18 @@
 
 // ---- DS18B20 temperature sensors (OneWire) ---------------------------------
 #define ONEWIRE_PIN        4
-#define DS18B20_COUNT      9
+#define DS18B20_COUNT      9    // dashboard slots + MQTT temp1..temp9 keys; the
+                                 // board's channel count, so do not raise this
+                                 // without also widening the ThingsBoard template
 #define DS18B20_RESOLUTION 12   // bits (9-12); 12 = 750ms conversion, 0.0625C steps
+
+// How many devices a bus scan will enumerate. Deliberately larger than the nine
+// slots: plug a replacement probe in beside a dying one and both answer the
+// scan, which is the only moment you can see the new ROM address and hand it
+// the dead one's slot. Anything found past the nine slots is held as a "spare"
+// and offered on the settings page -- it is never published, and it never
+// evicts a saved slot.
+#define DS18B20_SCAN_MAX   16
 
 // ---- Status LED -------------------------------------------------------------
 #define STATUS_LED_PIN     2

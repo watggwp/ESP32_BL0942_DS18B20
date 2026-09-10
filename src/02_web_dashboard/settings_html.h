@@ -101,6 +101,10 @@ input:focus{outline:none;border-color:var(--accent)}
 .addr{color:var(--muted);font-size:.7rem;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;
   margin-top:4px;letter-spacing:.5px}
 .move{display:flex;gap:5px;justify-content:flex-end}
+.row.spare .slot{color:var(--accent2);font-size:1rem}
+.row.spare select{background:var(--bg);border:1px solid var(--border);color:var(--text);
+  border-radius:9px;padding:8px 9px;font-size:.85rem;width:100%;font-family:inherit}
+.row.spare select:focus{outline:none;border-color:var(--accent)}
 
 /* --- Calibration tab --- */
 .live{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
@@ -218,6 +222,17 @@ footer{margin-top:22px;color:var(--muted);font-size:.75rem;text-align:center}
     <div id="list"><div class="empty">loading&hellip;</div></div>
   </div>
 
+  <div class="card" id="spareCard" hidden>
+    <h2>On the bus, no slot free</h2>
+    <div class="tip">These answered the last scan but all nine slots are taken by the saved map, so
+      they are not being read or published. This is what you see after plugging a replacement probe in
+      beside a dead one. <b>Pinch it to confirm which one it is</b> &mdash; the reading is live &mdash;
+      then hand it the slot of the sensor it replaces: that slot keeps its name and its position on the
+      dashboard, and the sensor it displaces comes back down here. Nothing is written until you press
+      <b>Save order &amp; names</b>.</div>
+    <div id="spareList"></div>
+  </div>
+
   <div class="card">
     <div class="actions">
       <button class="btn" id="rescan">Rescan bus</button>
@@ -226,7 +241,8 @@ footer{margin-top:22px;color:var(--muted);font-size:.75rem;text-align:center}
     <div class="tip" style="margin-top:12px">The slot number is what fixes a sensor's position on the
       dashboard &mdash; it follows the ROM address, not the wiring order, so it survives reboots. A sensor
       that goes missing keeps its slot and shows as offline instead of shuffling everything below it.
-      <b>Rescan bus</b> picks up sensors plugged in after boot and appends them to the end.</div>
+      <b>Rescan bus</b> picks up sensors plugged in after boot and appends them to the end &mdash;
+      or lists them under <b>On the bus, no slot free</b> once all nine slots are spoken for.</div>
   </div>
 </div>
 
@@ -468,6 +484,7 @@ document.querySelectorAll('.tab').forEach(b=>b.onclick = ()=>showTab(b.dataset.t
 
 // ---------------------------------------------------------------- sensors
 let rows = [];
+let spares = [];            // on the bus, holding no slot -- see renderSpares()
 let tMin = 10, tMax = 80;   // thermal range, overwritten by /api/sensors
 
 // Pull the names out of the DOM before any reorder or save, so edits in flight
@@ -509,6 +526,55 @@ function move(i, d){
   render();
 }
 
+function renderSpares(){
+  const card = $('spareCard'), box = $('spareList');
+  card.hidden = !spares.length;
+  if(!spares.length){ box.innerHTML = ''; return; }
+  box.innerHTML = spares.map((r,i)=>`
+    <div class="row spare">
+      <div class="slot">&plus;</div>
+      <div class="temp none" id="st${i}">&mdash;</div>
+      <div class="meta">
+        <select id="sa${i}"></select>
+        <div class="addr">${r.addr}</div>
+      </div>
+      <div class="move"><button class="btn tiny" data-use="${i}">Use</button></div>
+    </div>`).join('');
+  // Options carry operator-typed names, so they go in as text, never as markup.
+  const dead = rows.findIndex(r=>!r.online);
+  spares.forEach((r,i)=>{
+    const sel = $('sa'+i);
+    rows.forEach((row,j)=>{
+      const o = document.createElement('option');
+      o.value = j;
+      o.textContent = 'Slot ' + (j+1) + ' — ' + (row.name || 'unnamed') +
+                      (row.online ? '' : ' (offline)');
+      sel.appendChild(o);
+    });
+    // Default to the first offline slot: that is the dead probe being replaced,
+    // which is the reason this list exists at all.
+    sel.value = dead < 0 ? 0 : dead;
+  });
+  box.querySelectorAll('[data-use]').forEach(b=>b.onclick=()=>useSpare(+b.dataset.use));
+}
+
+function useSpare(i){
+  syncNames();
+  const j = +$('sa'+i).value;
+  if(!(j >= 0 && j < rows.length)) return;
+  const old = rows[j];
+  // Taking over a slot whose sensor is still answering means dropping a working
+  // sensor off the dashboard -- almost never what someone means to do here.
+  if(old.online && !confirm('Slot ' + (j+1) + ' is online. Replace it anyway?')) return;
+  rows[j] = {addr: spares[i].addr, name: old.name, online: true, live: spares[i].live};
+  spares.splice(i, 1);
+  // The displaced sensor is only worth listing if it is actually on the bus;
+  // an offline one has nothing left to offer.
+  if(old.online) spares.push({addr: old.addr, live: old.live});
+  render(); renderSpares();
+  toast('Slot ' + (j+1) + ' points at the new sensor — press Save to keep it');
+}
+
 function loadSensors(){
   fetch('/api/sensors').then(r=>r.json()).then(d=>{
     if(d.fw){
@@ -517,11 +583,14 @@ function loadSensors(){
     }
     if(typeof d.tmin === 'number') tMin = d.tmin;
     if(typeof d.tmax === 'number') tMax = d.tmax;
-    // src remembers where this sensor sits in the firmware's slot order, which
-    // is what /events is indexed by -- without it the live column would point
-    // at the wrong sensor as soon as you move a row.
-    rows = (d.sensors||[]).map((s,i)=>({addr:s.addr, name:s.name||'', online:s.online, src:i}));
-    render();
+    // live remembers which stream array and which index this sensor's reading
+    // comes from -- /events is indexed by the firmware's own order, so without
+    // it the temperature column would point at the wrong sensor the moment you
+    // move a row or swap a spare in. 't' is the slot array, 's' the spare one.
+    rows = (d.sensors||[]).map((s,i)=>({addr:s.addr, name:s.name||'', online:s.online,
+                                        live:{a:'t', i:i}}));
+    spares = (d.spare||[]).map((s,i)=>({addr:s.addr, live:{a:'s', i:i}}));
+    render(); renderSpares();
   }).catch(()=>toast('Could not read the sensor list'));
 }
 
@@ -848,12 +917,12 @@ es.addEventListener('data', e=>{
   $('lp').textContent = d.p.toFixed(1);
   $('eVal').textContent = d.e.toFixed(3) + ' kWh';
 
-  const temps = d.temps || [];
-  rows.forEach((r,i)=>{
-    const el = $('t'+i); if(!el) return;
-    const v = temps[r.src];
+  const temps = d.temps || [], stemps = d.stemps || [];
+  const paint = (el, r, offlineText)=>{
+    if(!el) return;
+    const v = r.live ? (r.live.a === 's' ? stemps : temps)[r.live.i] : undefined;
     if(v === null || v === undefined){
-      el.textContent = 'offline'; el.className = 'temp none'; el.style.color = '';
+      el.textContent = offlineText; el.className = 'temp none'; el.style.color = '';
       return;
     }
     el.textContent = v.toFixed(2) + '°';
@@ -861,7 +930,11 @@ es.addEventListener('data', e=>{
     // Same ramp as the dashboard -- identifying a sensor by its colour only
     // works if both screens agree on what that colour means.
     el.style.color = thermalPaint((v - tMin) / ((tMax - tMin) || 1)).text;
-  });
+  };
+  rows.forEach((r,i)=>paint($('t'+i), r, 'offline'));
+  // A spare is on the bus by definition, so it has no offline state to show;
+  // it reads "—" only in the gap before the first frame after a swap.
+  spares.forEach((r,i)=>paint($('st'+i), r, '—'));
 });
 
 // /wifi is what the captive portal and setup-mode redirect point at, so that
