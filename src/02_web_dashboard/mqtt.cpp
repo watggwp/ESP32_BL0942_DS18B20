@@ -24,6 +24,10 @@ struct Config {
     char     subTopic[80]  = MQTT_DEF_SUB_TOPIC;
     char     attrTopic[80] = MQTT_DEF_ATTR_TOPIC;   // empty = do not publish attributes
     uint16_t intervalS = MQTT_DEF_INTERVAL_S;
+    uint16_t confirmS = MQTT_DEF_CONFIRM_S;            // how long drift must persist
+    uint16_t minIntervalS = MQTT_DEF_MIN_INTERVAL_S;   // floor for an early send
+    float    dbTempC = MQTT_DEF_DB_TEMP_C;             // 0 = never send early on temperature
+    float    dbAmps  = MQTT_DEF_DB_AMPS;               // 0 = never send early on current
     char     fwBase[80] = "";     // empty = https://<broker host>
 };
 Config cfg;
@@ -67,6 +71,29 @@ struct Snapshot {
     uint8_t tempCount = 0;
 };
 Snapshot shared;
+
+// What the broker actually last received. sample() measures drift against this,
+// not against the previous reading: what matters to an alarm is how far the far
+// end's picture has fallen behind reality, and that gap is what a deadband can
+// usefully bound. Reset to the payload that just went out, so a slow ramp
+// triggers once and then measures afresh instead of firing off a stale
+// reference for the rest of the day.
+struct Baseline {
+    bool    valid = false;
+    float   amps = 0;
+    float   temps[DS18B20_COUNT];
+    uint8_t tempCount = 0;
+};
+Baseline base;
+
+// When the reading first went past a deadband and has stayed past it since.
+// 0 means it is inside the deadband right now -- including the moment after a
+// publish, which resets the baseline under it. A timestamp rather than a flag
+// because the publisher task needs to know not just THAT the line was crossed
+// but for how long, and only it should be reading the clock against a setting
+// the operator can change while this is armed.
+volatile uint32_t overSinceMs = 0;
+
 SemaphoreHandle_t lock = nullptr;
 
 uint32_t lastPublishMs = 0;
@@ -74,6 +101,7 @@ uint32_t lastAttemptMs = 0;
 volatile bool     connectedFlag = false;
 volatile uint32_t published = 0;
 volatile uint32_t failures = 0;
+volatile uint32_t earlySends = 0;   // of those, how many beat the heartbeat
 char lastError[96] = "";
 char lastRpcReply[96] = "";   // topic to answer the in-flight command on
 
@@ -86,6 +114,20 @@ void defaultClientId(char *out, size_t size) {
     snprintf(out, size, "%s-%02X%02X", DEVICE_HOSTNAME, mac[4], mac[5]);
 }
 
+// A floor above the heartbeat would mean an early send could never happen, and
+// a negative deadband would fire on every reading. Applied on load and on save,
+// so a hand-edited NVS or an odd POST cannot leave the publisher in either state.
+void clampRates() {
+    if (cfg.minIntervalS < 1) cfg.minIntervalS = 1;
+    if (cfg.minIntervalS > cfg.intervalS) cfg.minIntervalS = cfg.intervalS;
+    // A window longer than the heartbeat could never finish before the reading
+    // went out on its own, which is the same as switching early sends off -- an
+    // honest way to say that, but not one worth letting a typo create silently.
+    if (cfg.confirmS > cfg.intervalS) cfg.confirmS = cfg.intervalS;
+    if (!(cfg.dbTempC > 0)) cfg.dbTempC = 0;   // also catches NaN
+    if (!(cfg.dbAmps  > 0)) cfg.dbAmps  = 0;
+}
+
 void load() {
     prefs.begin("mqtt", false);
     cfg.enabled    = prefs.getBool("on", false);
@@ -93,6 +135,10 @@ void load() {
     fwTries = prefs.getUChar("trycnt", 0);
     cfg.port      = prefs.getUShort("port", MQTT_DEF_PORT);
     cfg.intervalS = prefs.getUShort("every", MQTT_DEF_INTERVAL_S);
+    cfg.confirmS = prefs.getUShort("conf", MQTT_DEF_CONFIRM_S);
+    cfg.minIntervalS = prefs.getUShort("fast", MQTT_DEF_MIN_INTERVAL_S);
+    cfg.dbTempC = prefs.getFloat("dbt", MQTT_DEF_DB_TEMP_C);
+    cfg.dbAmps  = prefs.getFloat("dba", MQTT_DEF_DB_AMPS);
     prefs.getString("host", cfg.host, sizeof(cfg.host));
     prefs.getString("user", cfg.user, sizeof(cfg.user));
     prefs.getString("pass", cfg.pass, sizeof(cfg.pass));
@@ -104,12 +150,17 @@ void load() {
     else prefs.getString("attr", cfg.attrTopic, sizeof(cfg.attrTopic));
     if (!cfg.clientId[0]) defaultClientId(cfg.clientId, sizeof(cfg.clientId));
     if (cfg.intervalS < 5) cfg.intervalS = 5;
+    clampRates();
 }
 
 void save() {
     prefs.putBool("on", cfg.enabled);
     prefs.putUShort("port", cfg.port);
     prefs.putUShort("every", cfg.intervalS);
+    prefs.putUShort("conf", cfg.confirmS);
+    prefs.putUShort("fast", cfg.minIntervalS);
+    prefs.putFloat("dbt", cfg.dbTempC);
+    prefs.putFloat("dba", cfg.dbAmps);
     prefs.putString("host", cfg.host);
     prefs.putString("user", cfg.user);
     prefs.putString("pass", cfg.pass);
@@ -438,12 +489,16 @@ void publishAttributes() {
 // false when there is no reading yet -- the first sample lands a second after
 // boot, and an empty payload is worth showing as "nothing yet" rather than as a
 // document full of nulls.
-bool buildTelemetry(String &out) {
+bool buildTelemetry(String &out, Snapshot *used = nullptr) {
     Snapshot s;
     if (xSemaphoreTake(lock, pdMS_TO_TICKS(50)) != pdTRUE) return false;
     s = shared;
     xSemaphoreGive(lock);
     if (!s.valid) return false;
+    // The caller needs the exact numbers that went into the payload, not a fresh
+    // read: a sample landing in between would push the drift baseline ahead of
+    // what the broker was actually told.
+    if (used) *used = s;
 
     JsonDocument doc;
     // null rather than 0 when the meter did not answer: a zero here would land in
@@ -484,10 +539,25 @@ bool buildTelemetry(String &out) {
 
 void publishTelemetry() {
     String out;
-    if (!buildTelemetry(out)) return;
+    Snapshot sent;
+    if (!buildTelemetry(out, &sent)) return;
     if (client.publish(cfg.pubTopic, out.c_str())) {
         published++;
         lastError[0] = '\0';
+        if (xSemaphoreTake(lock, pdMS_TO_TICKS(50)) == pdTRUE) {
+            // Electrical figures published as null carry no information, so the
+            // old baseline is the better reference until the meter answers again.
+            if (sent.meterOk) base.amps = sent.amps;
+            base.tempCount = sent.tempCount;
+            for (uint8_t i = 0; i < sent.tempCount; i++) base.temps[i] = sent.temps[i];
+            base.valid = true;
+            // Drift is now zero by definition, so nothing is armed: the count
+            // starts again from the numbers the broker was just given.
+            overSinceMs = 0;
+            xSemaphoreGive(lock);
+        }
+        // Leaving it armed on a missed lock costs one extra publish a floor
+        // later, which is the harmless direction to fail in.
     } else {
         failures++;
         // The usual cause is an oversized payload: PubSubClient silently refuses
@@ -631,7 +701,22 @@ void task(void *) {
         }
 
         uint32_t now = millis();
-        if (lastPublishMs == 0 || now - lastPublishMs >= (uint32_t)cfg.intervalS * 1000UL) {
+        uint32_t since = now - lastPublishMs;
+        bool due = (lastPublishMs == 0) || since >= (uint32_t)cfg.intervalS * 1000UL;
+        // The early send is the whole point of the deadbands: it turns a 30s
+        // heartbeat into a few seconds of alarm latency without publishing at
+        // the sampling rate all day. Two things gate it, and both are read here
+        // rather than in sample() so that changing either takes effect without
+        // waiting for the next reading: the drift has to have PERSISTED for the
+        // confirmation window, and the floor has to have elapsed since the last
+        // publish. Read the timestamp once -- sample() can clear it between two
+        // uses, and half of this decision made against each value is no
+        // decision at all.
+        uint32_t armed = overSinceMs;
+        bool confirmed = armed && (now - armed) >= (uint32_t)cfg.confirmS * 1000UL;
+        bool early = confirmed && since >= (uint32_t)cfg.minIntervalS * 1000UL;
+        if (due || early) {
+            if (early && !due) earlySends++;
             lastPublishMs = now;
             publishTelemetry();
         }
@@ -654,6 +739,11 @@ void Mqtt::begin(SlotNameFn nameOf) {
     Serial.printf("MQTT: %s, broker %s:%u, every %us\n",
                   cfg.enabled ? "on" : "off",
                   cfg.host[0] ? cfg.host : "(not set)", cfg.port, cfg.intervalS);
+    if (cfg.dbTempC > 0 || cfg.dbAmps > 0) {
+        Serial.printf("      sooner on a jump: %.1fC / %.2fA of drift held for %us, "
+                      "no faster than %us\n",
+                      cfg.dbTempC, cfg.dbAmps, cfg.confirmS, cfg.minIntervalS);
+    }
 }
 
 void Mqtt::sample(bool meterOk, float volts, float amps, float watts, float hertz,
@@ -672,6 +762,38 @@ void Mqtt::sample(bool meterOk, float volts, float amps, float watts, float hert
     shared.energy = energyKWh;
     shared.tempCount = tempCount < DS18B20_COUNT ? tempCount : DS18B20_COUNT;
     for (uint8_t i = 0; i < shared.tempCount; i++) shared.temps[i] = temps[i];
+
+    // Drift is judged here, on every reading, because the publisher task sleeps
+    // through the interval and would never see a rise that happens between two
+    // beats. Judged, not acted on: this only moves the timestamp, and the task
+    // owns both the confirmation window and how often it may act.
+    //
+    // Measured against the last PUBLISHED value, so the question is always the
+    // same one -- how far has the broker's picture fallen behind reality -- and
+    // the answer resets to zero the moment a publish lands.
+    //
+    // A slot with no reading is skipped rather than treated as a change: a probe
+    // coming or going is worth knowing about, but it flaps, and an early send on
+    // every flap would report a loose wire at the floor rate indefinitely. It
+    // still reaches the broker on the next heartbeat.
+    bool over = false;
+    if (base.valid) {
+        if (cfg.dbAmps > 0 && meterOk && fabsf(amps - base.amps) >= cfg.dbAmps) {
+            over = true;
+        }
+        if (!over && cfg.dbTempC > 0) {
+            uint8_t n = shared.tempCount < base.tempCount ? shared.tempCount : base.tempCount;
+            for (uint8_t i = 0; i < n; i++) {
+                if (isnan(shared.temps[i]) || isnan(base.temps[i])) continue;
+                if (fabsf(shared.temps[i] - base.temps[i]) >= cfg.dbTempC) { over = true; break; }
+            }
+        }
+    }
+    // Back inside the deadband stands the early send down completely -- the
+    // window restarts from scratch if the reading crosses again, so a value
+    // flicking in and out never accumulates its way to a publish.
+    if (!over)             overSinceMs = 0;
+    else if (!overSinceMs) overSinceMs = millis();
     xSemaphoreGive(lock);
 }
 
@@ -687,6 +809,11 @@ void Mqtt::registerRoutes(AsyncWebServer &server) {
         doc["subTopic"] = cfg.subTopic;
         doc["attrTopic"] = cfg.attrTopic;
         doc["interval"] = cfg.intervalS;
+        doc["confirm"] = cfg.confirmS;
+        doc["minInterval"] = cfg.minIntervalS;
+        doc["dbTemp"] = cfg.dbTempC;
+        doc["dbAmps"] = cfg.dbAmps;
+        doc["early"] = earlySends;
         doc["passSet"] = cfg.pass[0] != '\0';   // the password itself never leaves
         doc["connected"] = connectedFlag;
         doc["published"] = published;
@@ -724,6 +851,11 @@ void Mqtt::registerRoutes(AsyncWebServer &server) {
             cfg.port = o["port"] | (uint16_t)MQTT_DEF_PORT;
             cfg.intervalS = o["interval"] | (uint16_t)MQTT_DEF_INTERVAL_S;
             if (cfg.intervalS < 5) cfg.intervalS = 5;
+            cfg.confirmS = o["confirm"] | (uint16_t)MQTT_DEF_CONFIRM_S;
+            cfg.minIntervalS = o["minInterval"] | (uint16_t)MQTT_DEF_MIN_INTERVAL_S;
+            cfg.dbTempC = o["dbTemp"] | (float)MQTT_DEF_DB_TEMP_C;
+            cfg.dbAmps  = o["dbAmps"] | (float)MQTT_DEF_DB_AMPS;
+            clampRates();
             strlcpy(cfg.host, o["host"] | "", sizeof(cfg.host));
             strlcpy(cfg.user, o["user"] | "", sizeof(cfg.user));
             strlcpy(cfg.pubTopic,  o["pubTopic"]  | MQTT_DEF_PUB_TOPIC,  sizeof(cfg.pubTopic));

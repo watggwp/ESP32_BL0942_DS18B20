@@ -301,11 +301,11 @@ copy can be tailored to whatever machine is being shown.
 
 ### MQTT
 
-Publishes the readings on a timer (30 s by default) and listens for a firmware
-command. Broker, credentials, topics and interval are set in the MQTT tab and
-stored in NVS. The defaults are ThingsBoard's topic names — put the device
-**access token** in Username and leave Password empty — but any broker works
-once the topics are changed.
+Publishes the readings on a heartbeat (30 s by default), sooner when something
+moves (below), and listens for a firmware command. Broker, credentials, topics
+and rates are set in the MQTT tab and stored in NVS. The defaults are
+ThingsBoard's topic names — put the device **access token** in Username and
+leave Password empty — but any broker works once the topics are changed.
 
 Telemetry payload:
 
@@ -330,6 +330,65 @@ nobody can tell apart from a real outage afterwards. Same rule for an offline
 probe. On connect the board also publishes its version, IP, MAC and the
 **operator's names for each slot** as attributes, so a dashboard can label a
 series `หม้อแปลง` instead of `temp3` without keeping a second copy of that list.
+
+#### Report by exception — why the heartbeat is a ceiling, not a rate
+
+An alarm that matters — a busbar heating up, a load surging — is worth knowing
+about while it is happening, not up to 30 s afterwards. So the interval is the
+**slowest** the broker ever hears from this board. Three settings decide when it
+hears sooner:
+
+| Setting | Default | What it does |
+|---|---|---|
+| Heartbeat (s) | 30 | publishes even when nothing has changed |
+| Hold for (s) | 2 | the drift has to still be there this long before it counts |
+| No faster than (s) | 5 | floor — the fastest an early send may happen |
+| Early if °C moves | 2.0 | any slot this far from its last published value sends early |
+| Early if A moves | 0.5 | current this far from its last published value sends early |
+
+Either deadband set to **0** switches that trigger off; set both to 0 and the
+behaviour is exactly the fixed timer it was before. **Hold for** at 0 sends on
+the first reading past the line.
+
+**Crossing a deadband arms a timer, it does not publish.** The reading has to
+*still* be past the line when the hold window runs out. One that falls back
+inside stands the early send down outright — the value goes out on its normal
+turn instead, and the window starts from scratch if it crosses again, so a value
+flicking in and out never accumulates its way to a message. That is what keeps a
+single glitched sample, a bouncing contact or a probe brushed by a hand from
+costing a message and a false alarm, and it gives up nothing that matters: a real
+fault is still climbing two seconds later.
+
+**Drift is measured against the last *published* value, not the previous
+sample.** That one choice is what makes a single number enough:
+
+- It bounds the thing that actually matters — the server's picture is never more
+  than one deadband behind reality, however the value got there.
+- It self-paces. A fast climb crosses the deadband sooner, so it reports sooner;
+  a slow drift never crosses it and never costs a message. A 12 °C/min ramp
+  against a 1 °C deadband settles at one publish every 5 s, the floor; the same
+  ramp against 2 °C settles at 10 s.
+- A slope computed from consecutive samples would be mostly noise. A 12-bit
+  DS18B20 steps 0.0625 °C, which across one sampling second already reads as
+  3.75 °C/min — a threshold low enough to be useful would fire on a still probe.
+
+The judgement runs in `Mqtt::sample()`, on every 1 s reading, because the
+publisher task sleeps through the interval and would never see a rise that
+happens between two beats. It only moves a timestamp — *when the reading first
+went past the line and has stayed past it* — and the task owns both gates: the
+hold window and the floor. Both are read there rather than in `sample()`, so
+changing either takes effect without waiting for the next reading. A slot with no reading
+is skipped rather than counted as a change — a probe coming and going is worth
+knowing about, but it flaps, and an early send per flap would report a loose wire
+at the floor rate indefinitely. It still arrives on the next heartbeat.
+
+**The payload never changes shape.** An early publish is byte-for-byte the same
+document as a heartbeat one, so nothing downstream needs to know this feature
+exists. The count of early sends is on the MQTT tab's status line instead.
+
+> The cost is message volume: a runaway reading publishes once per floor rather
+> than once per heartbeat — 12 a minute instead of 2, at the defaults. Raise the
+> floor where the broker charges per message.
 
 **All of this runs on its own FreeRTOS task.** PubSubClient has no non-blocking
 connect, so a broker that stops answering would freeze the loop task — and with
@@ -502,8 +561,8 @@ comes up unable to reach the network, undoes itself with nobody present.
 | GET | `/api/sensors` | `{version, fw, build, max, scanMax, tmin, tmax, sensors:[{slot, addr, name, online}], spare:[{addr, temp}]}` |
 | POST | `/api/sensors` | `{"sensors":[{"addr","name"}]}` in slot order, persists to NVS |
 | POST | `/api/sensors/rescan` | re-run the OneWire scan; new sensors take a free slot, or join `spare` if none is |
-| GET | `/api/mqtt` | broker settings + `{connected, published, failures, passSet, error}`, plus `payload` and `attrPayload` — the exact JSON the next publish would send. Never the password |
-| POST | `/api/mqtt` | set broker/topics/interval; blank `pass` keeps the stored one |
+| GET | `/api/mqtt` | broker settings + `{connected, published, early, failures, passSet, error}`, plus `payload` and `attrPayload` — the exact JSON the next publish would send. Never the password |
+| POST | `/api/mqtt` | set broker/topics/`interval`/`confirm`/`minInterval`/`dbTemp`/`dbAmps`; blank `pass` keeps the stored one |
 | GET | `/api/ota` | `{fw, build, running, target, targetSize, sketch, verify}` — status only, there is no upload endpoint |
 | GET | `/api/wifi` | `{portal, connected, ssid, ip, rssi, host, ap, saved, fw, build}` |
 | POST | `/api/wifi` | `{"ssid","pass"}`, persists to NVS and reboots |

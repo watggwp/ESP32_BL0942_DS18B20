@@ -15,7 +15,7 @@
 // considered up to date when both agree -- so this string has to be typed
 // identically into the Title field there.
 #define FIRMWARE_TITLE   "PEA-PowerMeter"
-#define FIRMWARE_VERSION "3.0.101"
+#define FIRMWARE_VERSION "3.0.103"
 #define FIRMWARE_BUILD   __DATE__ " " __TIME__
 
 // ---- BL0942 energy metering IC (UART2) -------------------------------------
@@ -76,7 +76,36 @@
 // retry, so the whole client lives on a separate task and loop() only ever hands
 // it a copy of the latest reading.
 #define MQTT_DEF_PORT        1883
-#define MQTT_DEF_INTERVAL_S  30     // seconds between telemetry publishes
+#define MQTT_DEF_INTERVAL_S  30     // heartbeat: the SLOWEST the broker hears from us
+
+// ---- Report by exception -----------------------------------------------------
+// The heartbeat above is a ceiling, not a fixed rate. A reading that has drifted
+// further than its deadband from the value last published is sent as soon as the
+// floor allows, so an alarm on the far end fires while a temperature is climbing
+// instead of up to a full interval after it arrived.
+//
+// Measuring drift against the LAST PUBLISHED value rather than against the
+// previous sample is what makes one number enough. It bounds the error in the
+// server's picture directly -- never more than a deadband behind reality -- and
+// it self-paces: the faster a value climbs, the sooner it crosses the deadband,
+// so a fast rise reports often and a slow drift does not report at all. A slope
+// computed from consecutive samples would instead be mostly noise (a 12-bit
+// DS18B20 steps 0.0625C, which over one second already reads as 3.75C/min).
+//
+// The floor is the only thing standing between an alarm and a flood: at 5s a
+// runaway reading costs 12 messages a minute instead of 2. Raise it where the
+// broker charges per message. A deadband of 0 switches that trigger off.
+// Crossing a deadband arms a timer instead of publishing. The reading has to
+// STILL be past the line when the window runs out; one that falls back inside
+// stands the early send down and rides the next heartbeat as if nothing had
+// happened. That is what keeps a single glitched sample, a contact bouncing or
+// a probe brushed by a hand from costing an alarm and a message every time --
+// and it costs nothing in latency that matters, because a real fault is still
+// climbing two seconds later.
+#define MQTT_DEF_CONFIRM_S      2      // seconds a reading must stay past the deadband
+#define MQTT_DEF_MIN_INTERVAL_S 5      // seconds; never publish faster than this
+#define MQTT_DEF_DB_TEMP_C      2.0f   // degrees C of drift on any slot (0 = off)
+#define MQTT_DEF_DB_AMPS        0.5f   // amps of drift (0 = off)
 #define MQTT_DEF_PUB_TOPIC   "v1/devices/me/telemetry"
 #define MQTT_DEF_SUB_TOPIC   "v1/devices/me/rpc/request/+"
 #define MQTT_DEF_ATTR_TOPIC  "v1/devices/me/attributes"

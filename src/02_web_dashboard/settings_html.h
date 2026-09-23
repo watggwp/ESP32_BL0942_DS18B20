@@ -292,8 +292,34 @@ footer{margin-top:22px;color:var(--muted);font-size:.75rem;text-align:center}
       <div class="knob" style="flex:2;min-width:200px"><label for="mqHost">Broker address</label>
         <input id="mqHost" maxlength="60" autocomplete="off" spellcheck="false" placeholder="thingsboard.cloud"></div>
       <div class="knob"><label for="mqPort">Port</label><input id="mqPort" type="number" min="1" max="65535"></div>
-      <div class="knob"><label for="mqEvery">Every (s)</label><input id="mqEvery" type="number" min="5" max="3600"></div>
+      <div class="knob"><label for="mqEvery">Heartbeat (s)</label><input id="mqEvery" type="number" min="5" max="3600"></div>
     </div>
+    <div class="knobs" style="margin-top:14px">
+      <div class="knob"><label for="mqHold">Hold for (s)</label>
+        <input id="mqHold" type="number" min="0" max="3600"></div>
+      <div class="knob"><label for="mqFast">No faster than (s)</label>
+        <input id="mqFast" type="number" min="1" max="3600"></div>
+      <div class="knob"><label for="mqDbT">Early if °C moves</label>
+        <input id="mqDbT" type="number" min="0" max="100" step="0.1"></div>
+      <div class="knob"><label for="mqDbA">Early if A moves</label>
+        <input id="mqDbA" type="number" min="0" max="1000" step="0.1"></div>
+    </div>
+    <div class="tip" style="margin-top:10px"><b>Heartbeat</b> is the slowest the broker ever hears from
+      this board, not a fixed rate. Whenever a slot has drifted more than the °C figure from the value
+      last published &mdash; or the current more than the A figure &mdash; the next reading goes out as
+      soon as <b>Hold for</b> and <b>No faster than</b> both allow. An alarm then fires while a
+      temperature is still climbing instead of up to a full heartbeat later, and the faster it climbs
+      the sooner it reports, because it crosses the deadband sooner.
+      <br><br>
+      <b>Hold for</b> is the wait before believing it: the reading has to still be past the deadband
+      when the seconds run out. Fall back inside and the early send is cancelled outright &mdash; the
+      value simply goes out on its normal turn, and the wait starts from scratch if it crosses again.
+      That is what stops one glitched sample, a bouncing contact or a probe brushed by a hand from
+      costing a message and a false alarm. Set it to 0 to send on the first reading past the line.
+      <br><br>
+      <b>0 switches a deadband off.</b> The payload is byte-for-byte the same either way, so nothing
+      on the ThingsBoard side needs changing &mdash; but a genuine runaway does cost one message per
+      floor instead of one per heartbeat, which matters where the broker charges per message.</div>
     <div class="field" style="margin-top:14px">
       <label for="mqUser">Username &mdash; ThingsBoard device access token</label>
       <input id="mqUser" maxlength="90" autocomplete="off" spellcheck="false">
@@ -370,7 +396,7 @@ footer{margin-top:22px;color:var(--muted);font-size:.75rem;text-align:center}
     <div class="tip" style="margin-bottom:12px">Built the same way the real publish builds it, and shown
       whether or not a broker is connected &mdash; so you can see what will go out before pointing the board
       at anything. Refreshes while this tab is open.</div>
-    <div class="plabel">Telemetry &mdash; every <span id="pEvery">30</span>s</div>
+    <div class="plabel">Telemetry &mdash; every <span id="pEvery">30s</span></div>
     <pre class="payload" id="pTele">&mdash;</pre>
     <div class="plabel">Attributes &mdash; once per connect</div>
     <pre class="payload" id="pAttr">&mdash;</pre>
@@ -667,7 +693,10 @@ function renderPayload(el, obj){
 }
 
 function mqttStatus(d){
-  $('pEvery').textContent = d.interval;
+  // "every 30s" alone would misdescribe the schedule the moment a deadband is
+  // set: the preview is what the NEXT publish sends, and that can be sooner.
+  const rbe = (d.dbTemp > 0 || d.dbAmps > 0);
+  $('pEvery').textContent = rbe ? (d.interval + 's, sooner on a jump') : (d.interval + 's');
   $('limAuto').classList.toggle('off', !d.attrTopic);
   if(d.fwTitle) $('mqFwTitle').textContent = '"' + d.fwTitle + '"';
   const detail = d.fwNote ? d.fwNote
@@ -681,6 +710,7 @@ function mqttStatus(d){
   const bits = [];
   bits.push(d.enabled ? (d.connected ? 'connected' : 'not connected') : 'disabled');
   bits.push(d.published + ' published');
+  if(d.early) bits.push(d.early + ' early');
   if(d.failures) bits.push(d.failures + ' failed');
   $('mqStat').textContent = bits.join(' · ');
   const e = $('mqErr');
@@ -697,6 +727,10 @@ function loadMqtt(){
     $('mqHost').value = d.host || '';
     $('mqPort').value = d.port;
     $('mqEvery').value = d.interval;
+    $('mqHold').value = d.confirm;
+    $('mqFast').value = d.minInterval;
+    $('mqDbT').value = d.dbTemp;
+    $('mqDbA').value = d.dbAmps;
     $('mqUser').value = d.user || '';
     $('mqCid').value = d.clientId || '';
     $('mqPub').value = d.pubTopic || '';
@@ -721,6 +755,15 @@ $('mqSave').addEventListener('click', ()=>{
     host: $('mqHost').value.trim(),
     port: parseInt($('mqPort').value, 10) || 1883,
     interval: parseInt($('mqEvery').value, 10) || 30,
+    // Not `|| 2`: 0 is a real answer here -- send on the first reading past the
+    // deadband -- and it is the one value `||` would quietly overwrite.
+    confirm: (function(){ const v = parseInt($('mqHold').value, 10); return isFinite(v) && v >= 0 ? v : 2; })(),
+    minInterval: parseInt($('mqFast').value, 10) || 5,
+    // An empty box parses to NaN and lands on 0, which is exactly what typing a
+    // 0 means here -- off. Both ways of saying it agree, so there is nothing to
+    // distinguish.
+    dbTemp: parseFloat($('mqDbT').value) || 0,
+    dbAmps: parseFloat($('mqDbA').value) || 0,
     user: $('mqUser').value.trim(),
     clientId: $('mqCid').value.trim(),
     pubTopic: $('mqPub').value.trim(),
