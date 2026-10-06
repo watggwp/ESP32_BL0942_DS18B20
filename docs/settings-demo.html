@@ -1,0 +1,1158 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Settings &middot; ESP32 Power Meter</title>
+<style>
+:root{
+  --bg:#0b0f17; --panel:#121826; --panel2:#161d2e; --border:#232b3d;
+  --text:#e8ecf4; --muted:#8a93a6;
+  --accent:#5ee1c9; --accent2:#8b7bf0; --warn:#f2b84b; --bad:#ef6b6b;
+  --radius:16px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;}
+body{padding:20px;max-width:760px;margin:0 auto}
+
+header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px}
+h1{font-size:1.25rem;font-weight:700;margin:0;letter-spacing:.2px}
+h1 span{color:var(--accent)}
+header nav{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.navbtn{display:inline-flex;align-items:center;gap:6px;background:var(--panel2);
+  border:1px solid var(--border);color:var(--text);padding:8px 14px;border-radius:10px;
+  font-size:.82rem;text-decoration:none;white-space:nowrap;transition:.15s}
+.navbtn:hover{border-color:var(--accent);color:var(--accent)}
+
+.tabs{display:flex;gap:5px;background:var(--panel);border:1px solid var(--border);
+  border-radius:14px;padding:5px;margin-bottom:16px;overflow-x:auto}
+.tab{flex:1;min-width:104px;background:none;border:none;color:var(--muted);font-family:inherit;
+  font-size:.85rem;padding:10px 12px;border-radius:10px;cursor:pointer;white-space:nowrap;transition:.15s}
+.tab:hover{color:var(--text)}
+.tab.on{background:var(--panel2);color:var(--accent);font-weight:600;box-shadow:inset 0 0 0 1px var(--border)}
+.panel{display:none}
+.panel.on{display:block}
+
+.card{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--border);
+  border-radius:var(--radius);padding:18px;margin-bottom:16px}
+.card h2{font-size:.78rem;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);
+  margin:0 0 12px 0;font-weight:600;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.tip{color:var(--muted);font-size:.82rem;line-height:1.6}
+.tip b{color:var(--text);font-weight:600}
+.empty{color:var(--muted);font-size:.85rem;padding:14px 10px;text-align:center}
+.actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:space-between;align-items:center}
+
+.btn{background:var(--panel2);border:1px solid var(--border);color:var(--text);padding:9px 16px;
+  border-radius:10px;cursor:pointer;font-size:.85rem;font-family:inherit;transition:.15s}
+.btn:hover:not(:disabled){border-color:var(--accent);color:var(--accent)}
+.btn:disabled{opacity:.3;cursor:default}
+.btn.tiny{padding:5px 9px;font-size:.7rem;line-height:1;text-transform:none;letter-spacing:0}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#08221d;font-weight:700}
+.btn.primary:hover:not(:disabled){color:#08221d;filter:brightness(1.08)}
+.btn.danger:hover:not(:disabled){border-color:var(--bad);color:var(--bad)}
+
+label{display:block;font-size:.78rem;color:var(--muted);margin:0 0 6px 2px}
+input{background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:9px;
+  padding:9px 11px;font-size:.9rem;width:100%;font-family:inherit}
+input:focus{outline:none;border-color:var(--accent)}
+
+/* --- Sensors tab --- */
+.row{display:grid;grid-template-columns:34px 78px 1fr 76px;gap:12px;align-items:center;
+  padding:11px 10px;border-radius:12px;border:1px solid transparent;transition:.15s}
+.row+.row{margin-top:4px}
+.row:hover{background:var(--bg);border-color:var(--border)}
+.row.off{opacity:.5}
+.slot{width:30px;height:30px;border-radius:9px;background:var(--bg);border:1px solid var(--border);
+  display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.85rem;color:var(--accent)}
+.temp{font-variant-numeric:tabular-nums;font-weight:700;font-size:1rem;text-align:right;transition:color .8s}
+.temp.none{color:var(--muted);font-weight:400;font-size:.8rem}
+.meta{min-width:0}
+.addr{color:var(--muted);font-size:.7rem;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;
+  margin-top:4px;letter-spacing:.5px}
+.move{display:flex;gap:5px;justify-content:flex-end}
+.row.spare .slot{color:var(--accent2);font-size:1rem}
+.row.spare select{background:var(--bg);border:1px solid var(--border);color:var(--text);
+  border-radius:9px;padding:8px 9px;font-size:.85rem;width:100%;font-family:inherit}
+.row.spare select:focus{outline:none;border-color:var(--accent)}
+
+/* --- Calibration tab --- */
+.live{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.live div{background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:12px;text-align:center}
+.live b{display:block;font-size:1.3rem;font-weight:700;font-variant-numeric:tabular-nums}
+.live span{color:var(--muted);font-size:.68rem;text-transform:uppercase;letter-spacing:1px}
+.knobs{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end}
+.knob{display:flex;flex-direction:column}
+.knob label{font-size:.72rem;text-transform:uppercase;letter-spacing:.5px;margin:0 0 5px 2px}
+.knob input{width:112px}
+.erow{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+.eval{font-size:1.6rem;font-weight:800;color:var(--accent2);font-variant-numeric:tabular-nums}
+
+/* --- toggles, switches and the label/value rows they sit in --- */
+input[type=checkbox]{width:auto;margin:0;accent-color:var(--accent)}
+.sw{display:inline-flex;align-items:center;gap:7px;margin:0;text-transform:none;letter-spacing:0;
+  font-size:.78rem;color:var(--muted);cursor:pointer}
+.lim{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;padding:11px 0}
+.lim+.lim{border-top:1px solid var(--border)}
+.lim .nm{display:flex;align-items:center;gap:9px;font-size:.9rem}
+.lim .in{display:flex;gap:7px;align-items:center;color:var(--muted);font-size:.74rem;flex-wrap:wrap;
+  justify-content:flex-end}
+/* --- Firmware tab --- */
+.slots{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:4px}
+.slotbox{background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:12px}
+.slotbox .k{color:var(--muted);font-size:.7rem;text-transform:uppercase;letter-spacing:.5px}
+.slotbox .v{font-size:.95rem;font-weight:700;margin-top:4px;font-variant-numeric:tabular-nums;
+  overflow-wrap:anywhere}
+.payload{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:12px 13px;
+  font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.72rem;line-height:1.6;
+  color:var(--text);white-space:pre-wrap;word-break:break-word;margin:0;max-height:230px;overflow:auto}
+.payload .k{color:var(--accent)}
+.payload .n{color:var(--muted);font-style:italic}
+.payload.empty{color:var(--muted);font-style:italic}
+.plabel{color:var(--muted);font-size:.72rem;text-transform:uppercase;letter-spacing:.5px;margin:14px 0 6px}
+.plabel:first-child{margin-top:0}
+.err{margin-top:12px;padding:10px 12px;border-radius:10px;background:rgba(239,107,107,.09);
+  border:1px solid var(--bad);color:var(--bad);font-size:.78rem;line-height:1.5;
+  font-family:ui-monospace,SFMono-Regular,Consolas,monospace;word-break:break-word}
+@media(max-width:520px){
+  .lim{grid-template-columns:1fr}
+  .lim .in{justify-content:flex-start}
+}
+
+/* --- Wi-Fi tab --- */
+.state{display:flex;align-items:center;gap:10px;font-size:.95rem;font-weight:600}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--muted);flex:none}
+.dot.ok{background:var(--accent);box-shadow:0 0 9px var(--accent)}
+.dot.portal{background:var(--warn);box-shadow:0 0 9px var(--warn)}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:5px 14px;margin-top:12px;font-size:.83rem}
+.kv dt{color:var(--muted)}
+.kv dd{margin:0;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;word-break:break-all}
+.net{display:flex;align-items:center;gap:12px;width:100%;text-align:left;cursor:pointer;
+  background:none;border:1px solid transparent;border-radius:12px;padding:10px;color:var(--text);
+  font-size:.9rem;font-family:inherit;transition:.15s}
+.net:hover{background:var(--bg);border-color:var(--border)}
+.net.sel{background:var(--bg);border-color:var(--accent)}
+.net .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.net .lk{color:var(--muted);font-size:.75rem;flex:none}
+.bars{display:flex;align-items:flex-end;gap:2px;height:14px;flex:none}
+.bars i{width:3px;background:var(--border);border-radius:1px}
+.bars i:nth-child(1){height:25%} .bars i:nth-child(2){height:50%}
+.bars i:nth-child(3){height:75%} .bars i:nth-child(4){height:100%}
+.bars i.on{background:var(--accent)}
+.field+.field{margin-top:14px}
+.pw{position:relative}
+.pw input{padding-right:60px}
+.pw button{position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;
+  color:var(--muted);font-size:.72rem;cursor:pointer;padding:6px 8px;font-family:inherit}
+.pw button:hover{color:var(--accent)}
+.done{position:fixed;inset:0;background:rgba(11,15,23,.96);display:none;align-items:center;
+  justify-content:center;padding:24px;z-index:20}
+.done.show{display:flex}
+.done .card{max-width:420px;margin:0;text-align:center}
+.done h3{margin:0 0 10px 0;font-size:1.05rem}
+
+.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%) translateY(20px);opacity:0;
+  background:var(--panel2);border:1px solid var(--accent);color:var(--text);padding:10px 18px;border-radius:10px;
+  font-size:.85rem;transition:.25s;pointer-events:none;z-index:9}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+footer{margin-top:22px;color:var(--muted);font-size:.75rem;text-align:center}
+@media(max-width:520px){
+  .row{grid-template-columns:30px 62px 1fr 70px;gap:8px}
+  .addr{font-size:.62rem}
+  .tab{min-width:0;font-size:.8rem;padding:10px 6px}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>&#9881;&#65039; Device <span>Settings</span></h1>
+  <nav><a class="navbtn" href="/">&larr; Dashboard</a></nav>
+</header>
+
+<div class="tabs">
+  <button class="tab on" data-tab="sensors">&#127777; Sensors</button>
+  <button class="tab" data-tab="calibration">&#9889; Calibration</button>
+  <button class="tab" data-tab="mqtt">&#128225; MQTT</button>
+  <button class="tab" data-tab="wifi">&#128246; Wi-Fi</button>
+  <button class="tab" data-tab="firmware">&#128190; Firmware</button>
+</div>
+
+<div class="panel on" id="p-sensors">
+  <div class="card">
+    <h2>How to tell the sensors apart</h2>
+    <div class="tip">A DS18B20 has no LED to blink, so the only way to identify one is to heat it.
+      <b>Pinch a sensor between your fingers and watch which row's temperature climbs</b> &mdash; that is
+      the one. Name it, then move on to the next. The readings below are live off the dashboard's own
+      stream, so you never have to walk back to the screen.</div>
+  </div>
+
+  <div class="card">
+    <h2>Slots</h2>
+    <div id="list"><div class="empty">loading&hellip;</div></div>
+  </div>
+
+  <div class="card" id="spareCard" hidden>
+    <h2>On the bus, no slot free</h2>
+    <div class="tip">These answered the last scan but all nine slots are taken by the saved map, so
+      they are not being read or published. This is what you see after plugging a replacement probe in
+      beside a dead one. <b>Pinch it to confirm which one it is</b> &mdash; the reading is live &mdash;
+      then hand it the slot of the sensor it replaces: that slot keeps its name and its position on the
+      dashboard, and the sensor it displaces comes back down here. Nothing is written until you press
+      <b>Save order &amp; names</b>.</div>
+    <div id="spareList"></div>
+  </div>
+
+  <div class="card">
+    <div class="actions">
+      <button class="btn" id="rescan">Rescan bus</button>
+      <button class="btn primary" id="save">Save order &amp; names</button>
+    </div>
+    <div class="tip" style="margin-top:12px">The slot number is what fixes a sensor's position on the
+      dashboard &mdash; it follows the ROM address, not the wiring order, so it survives reboots. A sensor
+      that goes missing keeps its slot and shows as offline instead of shuffling everything below it.
+      <b>Rescan bus</b> picks up sensors plugged in after boot and appends them to the end &mdash;
+      or lists them under <b>On the bus, no slot free</b> once all nine slots are spoken for.</div>
+  </div>
+</div>
+
+<div class="panel" id="p-calibration">
+  <div class="card">
+    <h2>Live reading</h2>
+    <div class="live">
+      <div><b id="lv">&mdash;</b><span>Volts</span></div>
+      <div><b id="li">&mdash;</b><span>Amps</span></div>
+      <div><b id="lp">&mdash;</b><span>Watts</span></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>BL0942 calibration</h2>
+    <div class="knobs">
+      <div class="knob"><label for="kI">Current kI</label><input id="kI" type="number" step="0.0001"></div>
+      <div class="knob"><label for="kV">Voltage kV</label><input id="kV" type="number" step="0.0001"></div>
+      <div class="knob"><label for="kP">Power kP</label><input id="kP" type="number" step="0.0001"></div>
+      <button class="btn primary" id="saveCalib">Save</button>
+    </div>
+    <div class="tip" style="margin-top:12px">Nominal factory constants are only a starting point. Measure
+      Voltage/Current/Power with a trusted meter under a known load, then set e.g.
+      <b>kV = true_volts / displayed_volts</b> (same idea for kI, kP) and Save. The numbers above update
+      live, so you can watch the effect without leaving this tab &mdash; values persist in flash across
+      reboots.</div>
+  </div>
+
+  <div class="card">
+    <h2>Accumulated energy</h2>
+    <div class="erow">
+      <div class="eval" id="eVal">&mdash; kWh</div>
+      <button class="btn danger" id="resetEnergy">Reset counter</button>
+    </div>
+    <div class="tip" style="margin-top:12px">The running kWh total, written to flash once a minute.
+      Resetting cannot be undone &mdash; note the reading down first if it is being billed against.</div>
+  </div>
+</div>
+
+<div class="panel" id="p-mqtt">
+  <div class="card">
+    <h2>Broker <label class="sw"><input type="checkbox" id="mqOn"> publishing enabled</label></h2>
+    <div class="tip" style="margin-bottom:14px">Defaults are ThingsBoard's own topics: put the device
+      <b>access token</b> in Username and leave Password empty. Any other broker works too &mdash; change
+      the topics to whatever it expects.</div>
+    <div class="knobs">
+      <div class="knob" style="flex:2;min-width:200px"><label for="mqHost">Broker address</label>
+        <input id="mqHost" maxlength="60" autocomplete="off" spellcheck="false" placeholder="thingsboard.cloud"></div>
+      <div class="knob"><label for="mqPort">Port</label><input id="mqPort" type="number" min="1" max="65535"></div>
+      <div class="knob"><label for="mqEvery">Heartbeat (s)</label><input id="mqEvery" type="number" min="5" max="3600"></div>
+    </div>
+    <div class="knobs" style="margin-top:14px">
+      <div class="knob"><label for="mqHold">Hold for (s)</label>
+        <input id="mqHold" type="number" min="0" max="3600"></div>
+      <div class="knob"><label for="mqFast">No faster than (s)</label>
+        <input id="mqFast" type="number" min="1" max="3600"></div>
+      <div class="knob"><label for="mqDbT">Early if °C moves</label>
+        <input id="mqDbT" type="number" min="0" max="100" step="0.1"></div>
+      <div class="knob"><label for="mqDbA">Early if A moves</label>
+        <input id="mqDbA" type="number" min="0" max="1000" step="0.1"></div>
+    </div>
+    <div class="tip" style="margin-top:10px"><b>Heartbeat</b> is the slowest the broker ever hears from
+      this board, not a fixed rate. Whenever a slot has drifted more than the °C figure from the value
+      last published &mdash; or the current more than the A figure &mdash; the next reading goes out as
+      soon as <b>Hold for</b> and <b>No faster than</b> both allow. An alarm then fires while a
+      temperature is still climbing instead of up to a full heartbeat later, and the faster it climbs
+      the sooner it reports, because it crosses the deadband sooner.
+      <br><br>
+      <b>Hold for</b> is the wait before believing it: the reading has to still be past the deadband
+      when the seconds run out. Fall back inside and the early send is cancelled outright &mdash; the
+      value simply goes out on its normal turn, and the wait starts from scratch if it crosses again.
+      That is what stops one glitched sample, a bouncing contact or a probe brushed by a hand from
+      costing a message and a false alarm. Set it to 0 to send on the first reading past the line.
+      <br><br>
+      <b>0 switches a deadband off.</b> The payload is byte-for-byte the same either way, so nothing
+      on the ThingsBoard side needs changing &mdash; but a genuine runaway does cost one message per
+      floor instead of one per heartbeat, which matters where the broker charges per message.</div>
+    <div class="field" style="margin-top:14px">
+      <label for="mqUser">Username &mdash; ThingsBoard device access token</label>
+      <input id="mqUser" maxlength="90" autocomplete="off" spellcheck="false">
+    </div>
+    <div class="field">
+      <label for="mqPass">Password</label>
+      <input id="mqPass" type="password" maxlength="60" autocomplete="off" placeholder="leave empty for ThingsBoard">
+    </div>
+    <div class="field">
+      <label for="mqCid">Client ID</label>
+      <input id="mqCid" maxlength="38" autocomplete="off" spellcheck="false">
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Topics</h2>
+    <div class="field">
+      <label for="mqPub">Telemetry &mdash; readings are published here</label>
+      <input id="mqPub" maxlength="78" autocomplete="off" spellcheck="false">
+    </div>
+    <div class="field">
+      <label for="mqSub">Commands &mdash; firmware updates arrive here (empty = do not listen)</label>
+      <input id="mqSub" maxlength="78" autocomplete="off" spellcheck="false">
+    </div>
+    <div class="field">
+      <label for="mqAttr">Attributes &mdash; version, IP and sensor names on connect (empty = skip)</label>
+      <input id="mqAttr" maxlength="78" autocomplete="off" spellcheck="false">
+    </div>
+    <div class="field">
+      <label for="mqFwBase">Firmware download base &mdash; blank = <code>https://&lt;broker host&gt;</code></label>
+      <input id="mqFwBase" maxlength="78" autocomplete="off" spellcheck="false"
+             placeholder="only for self-hosted, e.g. http://192.168.1.5:8080">
+    </div>
+    <div class="lim" id="limAuto" style="border-top:1px solid var(--border);margin-top:8px">
+      <div class="nm">&#128260; Follows the server's firmware version <b>at every restart</b></div>
+      <div class="in" id="mqAutoState">&mdash;</div>
+    </div>
+    <div class="tip" style="margin-top:6px">There is no switch for this: a board that is told which version it
+      should be on takes itself there. The server is already the thing that decides whether an update happens
+      at all &mdash; assign a package, or do not.
+      <br><br><b>The board only looks once, on the first broker connection after the power comes on or the
+      reset button is pressed.</b> After that it stops asking and ignores a target pushed at it &mdash; a Wi-Fi
+      link that drops and comes back never starts a download, so a flaky line cannot flash and reboot the meter
+      unattended. A package assigned while the board is running is taken at the next restart. An
+      <b>fwUpdate</b> command is never held back: that one is somebody deliberately asking for it.
+      <br><br>Works straight out of <b>ThingsBoard &rarr; Advanced features &rarr;
+      OTA updates</b>: upload a package there, assign it to this device, and ThingsBoard publishes
+      <b>fw_title</b> and <b>fw_version</b> as shared attributes. If the version differs from the one running,
+      the board downloads the package <b>from ThingsBoard itself</b> using its access token &mdash; nothing has
+      to be hosted anywhere. A package created with <i>Use external URL</i> sends <b>fw_url</b> instead and that
+      is used as given. On a plain broker, publish <b>fw_target</b> + <b>fw_url</b> to the attributes topic by
+      hand (set the retain flag, or the board forgets it on the next reconnect).
+      <br><br>The package <b>Title</b> in ThingsBoard must match <span id="mqFwTitle">this firmware's title</span>
+      exactly &mdash; ThingsBoard treats title and version together, and a mismatched title just means nothing
+      ever happens.
+      <br><br><b>A version is only ever attempted once.</b> If the board flashes it and comes back still on the
+      old version &mdash; a stale .bin, a version that was never bumped &mdash; it stops and reports
+      <b>fw_state: FAILED</b> instead of flashing in a loop for ever. Change the version to try again.</div>
+
+    <div class="tip" style="margin-top:12px">A command is JSON with a URL in it, either ThingsBoard RPC
+      <b>{"method":"fwUpdate","params":{"url":"http://&hellip;/firmware.bin"}}</b> or plain
+      <b>{"url":"http://&hellip;/firmware.bin"}</b>. The board answers straight away, downloads, flashes the
+      spare slot and reboots, then reports <b>fw_state</b> as telemetry &mdash; an RPC call would time out
+      long before a 1.2 MB download finishes, so the outcome cannot come back as the reply.</div>
+    <div class="actions" style="margin-top:16px">
+      <span class="tip" id="mqStat">&mdash;</span>
+      <button class="btn primary" id="mqSave">Save &amp; reconnect</button>
+    </div>
+    <div class="err" id="mqErr" style="display:none"></div>
+  </div>
+
+  <div class="card">
+    <h2>What gets published</h2>
+    <div class="tip" style="margin-bottom:12px">Built the same way the real publish builds it, and shown
+      whether or not a broker is connected &mdash; so you can see what will go out before pointing the board
+      at anything. Refreshes while this tab is open.</div>
+    <div class="plabel">Telemetry &mdash; every <span id="pEvery">30s</span></div>
+    <pre class="payload" id="pTele">&mdash;</pre>
+    <div class="plabel">Attributes &mdash; once per connect</div>
+    <pre class="payload" id="pAttr">&mdash;</pre>
+  </div>
+</div>
+
+<div class="panel" id="p-wifi">
+  <div class="card">
+    <h2>Status</h2>
+    <div class="state"><span class="dot" id="dot"></span><span id="stateText">checking&hellip;</span></div>
+    <dl class="kv" id="kv"></dl>
+  </div>
+
+  <div class="card">
+    <h2>Networks <button class="btn tiny" id="wrescan">Scan again</button></h2>
+    <div id="nets"><div class="empty">scanning&hellip;</div></div>
+  </div>
+
+  <div class="card">
+    <h2>Connect to</h2>
+    <div class="field">
+      <label for="ssid">Network name (SSID)</label>
+      <input id="ssid" maxlength="32" autocomplete="off" autocapitalize="off" spellcheck="false"
+             placeholder="pick one above, or type it">
+    </div>
+    <div class="field">
+      <label for="pass">Password</label>
+      <div class="pw">
+        <input id="pass" type="password" maxlength="63" autocomplete="off" placeholder="leave empty for an open network">
+        <button type="button" id="reveal">show</button>
+      </div>
+    </div>
+    <div class="actions" style="margin-top:16px">
+      <button class="btn danger" id="forget">Forget saved network</button>
+      <button class="btn primary" id="wsave">Save &amp; reboot</button>
+    </div>
+    <div class="tip" style="margin-top:12px">Credentials are stored on the board itself, so this survives
+      reflashing only if you keep the NVS partition &mdash; and it survives a move to a new site with no
+      rebuild at all. <b>Sensors keep reading and totalling energy the whole time this page is up.</b></div>
+  </div>
+</div>
+
+<div class="panel" id="p-firmware">
+  <div class="card">
+    <h2>Running now</h2>
+    <div class="slots">
+      <div class="slotbox"><div class="k">Version</div><div class="v" id="oFw">&mdash;</div></div>
+      <div class="slotbox"><div class="k">Built</div><div class="v" id="oBuilt">&mdash;</div></div>
+      <div class="slotbox"><div class="k">Booted from</div><div class="v" id="oRun">&mdash;</div></div>
+      <div class="slotbox"><div class="k">Image size</div><div class="v" id="oSize">&mdash;</div></div>
+      <div class="slotbox"><div class="k">Rollback</div><div class="v" id="oVerify">&mdash;</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>How this board is updated</h2>
+    <div class="tip">Firmware comes from <b>ThingsBoard only</b> &mdash; there is no upload from this page
+      and no password to keep. Upload a package under <b>Advanced features &rarr; OTA updates</b> and assign it
+      to this device; the board sees the version, downloads the image itself and flashes it. No switch to turn
+      on, nothing to press here. An <code>fwUpdate</code> RPC carrying a <code>url</code> does the same thing
+      on a plain broker. Flashing over USB (<code>pio run -t upload</code>) still works with the board in hand.</div>
+    <div class="tip" style="margin-top:12px">A freshly flashed image starts <b>on probation</b>: the
+      bootloader keeps the old one in the other slot and puts it back unless this one runs for
+      <b>two minutes with Wi-Fi up</b>. So an update that boots into a crash loop, or comes up unable to
+      reach the network, undoes itself with nobody present. Careful: a power cut inside that window looks
+      the same from the outside, and reverts an update that was actually fine.</div>
+  </div>
+</div>
+
+<footer><span id="fw" title="">firmware &mdash;</span></footer>
+
+<div class="toast" id="toast"></div>
+
+<div class="done" id="done">
+  <div class="card">
+    <h3 id="doneTitle">Rebooting&hellip;</h3>
+    <div class="tip" id="doneBody"></div>
+  </div>
+</div>
+
+<script>
+// DEMO SHIM: replaces the board's HTTP and SSE endpoints with sample data so this
+// file renders when opened from disk. Everything below this block is the page as
+// the firmware serves it.
+(function(){
+  var FW = "3.0.103", BUILD = 'Sep 25 2026 10:12:44';
+  // All nine slots taken, slot 4 dead, one replacement probe already on the bus:
+  // the state the "On the bus, no slot free" card exists for. The firmware only
+  // lists a probe as spare once every slot is spoken for (see main.cpp), so the
+  // demo has to fill them all to show that card at all.
+  var sensors = [
+    {slot:0, addr:'28FF3A1C9116047B', name:'Inlet water',   online:true},
+    {slot:1, addr:'28FF9D02A116032E', name:'Outlet water',  online:true},
+    {slot:2, addr:'28FF6177C4160519', name:'Bearing DE',    online:true},
+    {slot:3, addr:'28FF08B5331604C0', name:'Ambient',       online:false},
+    {slot:4, addr:'28FF12E04A160388', name:'Bearing NDE',   online:true},
+    {slot:5, addr:'28FF7C09D116015D', name:'Motor housing', online:true},
+    {slot:6, addr:'28FFB3465E1604F2', name:'Panel air',     online:true},
+    {slot:7, addr:'28FF2A9C88160261', name:'Transformer',   online:true},
+    {slot:8, addr:'28FFE5D1071603A9', name:'',              online:true}
+  ];
+  // Every probe answering on the 1-Wire bus right now, with its reading. The
+  // dead one (slot 4) is simply absent. Anything here that holds no slot is a spare.
+  var bus = {
+    '28FF3A1C9116047B':27.6, '28FF9D02A116032E':31.9, '28FF6177C4160519':42.3,
+    '28FF12E04A160388':39.8, '28FF7C09D116015D':36.1, '28FFB3465E1604F2':29.4,
+    '28FF2A9C88160261':44.7, '28FFE5D1071603A9':28.2,
+    '28FFC25E071602A4':33.2   // the replacement probe, just plugged in
+  };
+  var newProbes = ['28FF4D70B2160117', '28FF9A2E5C1605E3'];   // handed out by Rescan
+  function spareList(){ return Object.keys(bus).filter(function(a){ return !sensors.some(function(s){ return s.addr===a; }); }); }
+  var calib = {kI:1.0000, kV:1.0030, kP:1.0000};
+  var energy = 1234.567;
+  var mqtt = {
+    enabled:true, host:'thingsboard.cloud', port:1883, user:'A1B2C3D4E5F6G7H8I9J0', clientId:'powermeter-7B',
+    pubTopic:'v1/devices/me/telemetry', subTopic:'v1/devices/me/rpc/request/+', attrTopic:'v1/devices/me/attributes',
+    interval:30, confirm:2, minInterval:5, dbTemp:1.0, dbAmps:0.5, early:12, passSet:false,
+    connected:true, published:1842, failures:0, fwBase:'', fwTitle:"PEA-PowerMeter", fw:FW,
+    fwMaxTries:1, fwWindow:'closed'
+  };
+  var wifi = {portal:false, connected:true, host:'powermeter', ap:'PowerMeter-Setup', saved:'SYNTECH-IoT',
+              fw:FW, build:BUILD, ssid:'SYNTECH-IoT', ip:'192.168.1.57', rssi:-58};
+  var nets = [{ssid:'SYNTECH-IoT',rssi:-58,lock:true},{ssid:'SYNTECH-Office',rssi:-67,lock:true},
+              {ssid:'Guest',rssi:-74,lock:false},{ssid:'TP-Link_7F21',rssi:-83,lock:true}];
+
+  function payload(){
+    var p = {v:+(229.8+Math.random()*.4-.2).toFixed(1), i:+(1.245+Math.random()*.01-.005).toFixed(3)};
+    p.p = +(p.v*p.i*0.99).toFixed(1); p.e = +energy.toFixed(3);
+    var jit = function(t){ return +(t+Math.random()*.1-.05).toFixed(2); };
+    p.temps = sensors.map(function(s){ return s.addr in bus ? jit(bus[s.addr]) : null; });
+    p.stemps = spareList().map(function(a){ return jit(bus[a]); });
+    return p;
+  }
+  function mqttDoc(){
+    var d = JSON.parse(JSON.stringify(mqtt)), p = payload();
+    d.payload = {voltage:p.v, current:p.i, power:p.p, energy:p.e, rssi:-58};
+    d.attrPayload = {fw:FW, build:BUILD, ip:'192.168.1.57'};
+    sensors.forEach(function(s,i){ d.payload['temp'+(i+1)] = p.temps[i]; d.attrPayload['temp'+(i+1)+'_name'] = s.name; });
+    return d;
+  }
+  var routes = {
+    'GET /api/sensors': function(){
+      return {version:3, fw:FW, build:BUILD, max:9, scanMax:16, tmin:20, tmax:50, sensors:sensors,
+              spare:spareList().map(function(a){ return {addr:a, temp:bus[a]}; })};
+    },
+    // Same rule as the board: a slot is online if its address answers on the bus.
+    'POST /api/sensors': function(b){
+      sensors = b.sensors.map(function(s,i){ return {slot:i, addr:s.addr, name:s.name, online:s.addr in bus}; });
+      return {ok:true};
+    },
+    // Each Rescan "plugs in" one more new probe, so the replacement flow can be
+    // walked through more than once without reloading the page.
+    'POST /api/sensors/rescan': function(){
+      if(!spareList().length && newProbes.length) bus[newProbes.shift()] = 30.5;
+      return {ok:true};
+    },
+    'GET /api/calibration': function(){ return calib; },
+    'POST /api/calibration': function(b){ calib = b; return {ok:true}; },
+    'POST /api/energy/reset': function(){ energy = 0; return {ok:true}; },
+    'GET /api/mqtt': mqttDoc,
+    'POST /api/mqtt': function(b){ Object.assign(mqtt, b); return {ok:true}; },
+    'GET /api/ota': function(){ return {fw:FW, build:BUILD, running:'app0', target:'app1', targetSize:1966080, sketch:1310720, verify:'confirmed'}; },
+    'GET /api/wifi': function(){ return wifi; },
+    'GET /api/wifi/scan': function(){ return {scanning:false, networks:nets}; },
+    'POST /api/wifi': function(){ return {ok:true}; },
+    'POST /api/wifi/forget': function(){ return {ok:true}; }
+  };
+  window.fetch = function(url, opt){
+    var m = ((opt && opt.method) || 'GET').toUpperCase();
+    var key = m + ' ' + String(url).split('?')[0];
+    var h = routes[key];
+    return new Promise(function(res, rej){
+      setTimeout(function(){
+        if(!h) return rej(new Error('no route ' + key));
+        var body = h(opt && opt.body ? JSON.parse(opt.body) : {});
+        res({ok:true, status:200, json:function(){ return Promise.resolve(body); }});
+      }, 120);
+    });
+  };
+  window.EventSource = function(){
+    var ls = {};
+    this.addEventListener = function(n, f){ ls[n] = f; };
+    this.close = function(){};
+    setInterval(function(){ if(ls.data) ls.data({data: JSON.stringify(payload())}); }, 1000);
+  };
+})();
+
+// Cold -> hot, the way a thermal camera reads: brightness and "heat" both climb
+// monotonically, and the ramp deliberately skips green. Green on a gauge reads
+// as "all good" no matter what number sits next to it, which is precisely the
+// wrong signal at 45 degrees on a bearing.
+var THERMAL_STOPS = [
+  [0.00,  47,  75, 143],   // deep blue
+  [0.20,  47, 143, 214],   // blue
+  [0.38,  79, 217, 208],   // cyan
+  [0.55, 255, 216,  77],   // yellow
+  [0.72, 255, 147,  38],   // orange
+  [0.87, 240,  82,  28],   // red-orange
+  [1.00, 192,  20,  20]    // deep red
+];
+
+// Legibility floor for text drawn in a ramp colour. Deep red is the whole point
+// of the hot end but it is unreadable on a dark card, so text gets blended
+// toward white until it clears this. Lower it for punchier numbers, at a cost.
+var THERMAL_TEXT_FLOOR = 0.45;
+
+function thermalClamp(t) { return t < 0 ? 0 : t > 1 ? 1 : t; }
+
+// Linear interpolation between the surrounding stops. Returns [r,g,b] floats.
+function thermalRamp(t) {
+  t = thermalClamp(t);
+  for (var i = 1; i < THERMAL_STOPS.length; i++) {
+    var a = THERMAL_STOPS[i - 1], b = THERMAL_STOPS[i];
+    if (t <= b[0]) {
+      var f = (t - a[0]) / (b[0] - a[0]);
+      return [a[1] + (b[1] - a[1]) * f,
+              a[2] + (b[2] - a[2]) * f,
+              a[3] + (b[3] - a[3]) * f];
+    }
+  }
+  var last = THERMAL_STOPS[THERMAL_STOPS.length - 1];
+  return [last[1], last[2], last[3]];
+}
+
+function thermalLum(c) {
+  return (0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]) / 255;
+}
+
+// Relative luminance is linear in each channel, so the blend factor that lands
+// exactly on the floor has a closed form -- no iterating toward it.
+function thermalReadable(c, floor) {
+  var L = thermalLum(c);
+  if (L >= floor) return c;
+  var f = (floor - L) / (1 - L);
+  return [c[0] + (255 - c[0]) * f,
+          c[1] + (255 - c[1]) * f,
+          c[2] + (255 - c[2]) * f];
+}
+
+function thermalCss(c, alpha) {
+  var r = c[0] | 0, g = c[1] | 0, b = c[2] | 0;
+  return alpha === undefined ? 'rgb(' + r + ',' + g + ',' + b + ')'
+                             : 'rgba(' + r + ',' + g + ',' + b + ',' + alpha + ')';
+}
+
+// CSS gradient built from the same stops, for the scale legend beside a chart.
+// A semantic-heat ramp is only readable with a scale to read it against, and
+// generating that scale from THERMAL_STOPS keeps it honest -- a hand-written
+// gradient would quietly stop matching the lines the first time a stop moves.
+function thermalGradientCss() {
+  var parts = [];
+  for (var i = 0; i < THERMAL_STOPS.length; i++) {
+    var s = THERMAL_STOPS[i];
+    parts.push(thermalCss([s[1], s[2], s[3]]) + ' ' + Math.round(s[0] * 100) + '%');
+  }
+  return 'linear-gradient(90deg,' + parts.join(',') + ')';
+}
+
+// Everything a card needs for one reading: t is the 0..1 position in the range.
+function thermalPaint(t) {
+  t = thermalClamp(t);
+  var vivid = thermalRamp(t);
+  return {
+    t: t,
+    vivid: thermalCss(vivid),
+    text: thermalCss(thermalReadable(vivid, THERMAL_TEXT_FLOOR)),
+    // Tint and border strengthen with heat; the glow only kicks in past the
+    // yellow stop so a room-temperature grid stays calm instead of all aglow.
+    tint: 'linear-gradient(180deg,' + thermalCss(vivid, (0.04 + 0.10 * t).toFixed(3)) +
+          ',' + thermalCss(vivid, (0.10 + 0.20 * t).toFixed(3)) + ')',
+    border: thermalCss(vivid, (0.30 + 0.45 * t).toFixed(3)),
+    glow: t > 0.55 ? '0 0 ' + (((t - 0.55) * 42) | 0) + 'px ' +
+                     thermalCss(vivid, (0.10 + 0.25 * t).toFixed(3)) : 'none'
+  };
+}
+</script>
+<script>
+const $ = id => document.getElementById(id);
+
+function toast(msg){
+  const t = $('toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toast._h); toast._h = setTimeout(()=>t.classList.remove('show'), 2400);
+}
+
+// ---------------------------------------------------------------- tabs
+const TABS = ['sensors','calibration','mqtt','wifi','firmware'];
+
+let current = 'sensors';
+
+function showTab(id){
+  if(TABS.indexOf(id) < 0) id = 'sensors';
+  current = id;
+  TABS.forEach(t=>$('p-'+t).classList.toggle('on', t === id));
+  document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('on', b.dataset.tab === id));
+  // replaceState, not location.hash: a reload lands back on the same tab without
+  // filling the back button with tab switches
+  history.replaceState(null, '', location.pathname + '#' + id);
+  id === 'wifi' ? startWifi() : stopWifi();
+  // Both carry live state worth refetching on the way in rather than showing
+  // whatever was true minutes ago. MQTT refreshes its status line ONLY: the form
+  // was filled at page load and may be half-edited by now.
+  if(id === 'mqtt') pollMqtt();
+  if(id === 'firmware') loadOta();
+}
+document.querySelectorAll('.tab').forEach(b=>b.onclick = ()=>showTab(b.dataset.tab));
+
+// ---------------------------------------------------------------- sensors
+let rows = [];
+let spares = [];            // on the bus, holding no slot -- see renderSpares()
+let tMin = 10, tMax = 80;   // thermal range, overwritten by /api/sensors
+
+// Pull the names out of the DOM before any reorder or save, so edits in flight
+// are not lost when the list re-renders.
+function syncNames(){
+  rows.forEach((r,i)=>{ const el = $('n'+i); if(el) r.name = el.value; });
+}
+
+function render(){
+  const box = $('list');
+  if(!rows.length){
+    box.innerHTML = '<div class="empty">no DS18B20 found on the bus &mdash; check the 4.7k pull-up, then Rescan</div>';
+    return;
+  }
+  box.innerHTML = rows.map((r,i)=>`
+    <div class="row${r.online?'':' off'}">
+      <div class="slot">${i + 1}</div>
+      <div class="temp none" id="t${i}">&mdash;</div>
+      <div class="meta">
+        <input id="n${i}" maxlength="15" autocomplete="off" placeholder="name this sensor">
+        <div class="addr">${r.addr}</div>
+      </div>
+      <div class="move">
+        <button class="btn tiny" data-up="${i}"${i===0?' disabled':''}>&#9650;</button>
+        <button class="btn tiny" data-dn="${i}"${i===rows.length-1?' disabled':''}>&#9660;</button>
+      </div>
+    </div>`).join('');
+  // value via property, not markup: a name is user text, not HTML
+  rows.forEach((r,i)=>{ $('n'+i).value = r.name; });
+  box.querySelectorAll('[data-up]').forEach(b=>b.onclick=()=>move(+b.dataset.up, -1));
+  box.querySelectorAll('[data-dn]').forEach(b=>b.onclick=()=>move(+b.dataset.dn, 1));
+}
+
+function move(i, d){
+  const j = i + d;
+  if(j < 0 || j >= rows.length) return;
+  syncNames();
+  const t = rows[i]; rows[i] = rows[j]; rows[j] = t;
+  render();
+}
+
+function renderSpares(){
+  const card = $('spareCard'), box = $('spareList');
+  card.hidden = !spares.length;
+  if(!spares.length){ box.innerHTML = ''; return; }
+  box.innerHTML = spares.map((r,i)=>`
+    <div class="row spare">
+      <div class="slot">&plus;</div>
+      <div class="temp none" id="st${i}">&mdash;</div>
+      <div class="meta">
+        <select id="sa${i}"></select>
+        <div class="addr">${r.addr}</div>
+      </div>
+      <div class="move"><button class="btn tiny" data-use="${i}">Use</button></div>
+    </div>`).join('');
+  // Options carry operator-typed names, so they go in as text, never as markup.
+  const dead = rows.findIndex(r=>!r.online);
+  spares.forEach((r,i)=>{
+    const sel = $('sa'+i);
+    rows.forEach((row,j)=>{
+      const o = document.createElement('option');
+      o.value = j;
+      o.textContent = 'Slot ' + (j+1) + ' — ' + (row.name || 'unnamed') +
+                      (row.online ? '' : ' (offline)');
+      sel.appendChild(o);
+    });
+    // Default to the first offline slot: that is the dead probe being replaced,
+    // which is the reason this list exists at all.
+    sel.value = dead < 0 ? 0 : dead;
+  });
+  box.querySelectorAll('[data-use]').forEach(b=>b.onclick=()=>useSpare(+b.dataset.use));
+}
+
+function useSpare(i){
+  syncNames();
+  const j = +$('sa'+i).value;
+  if(!(j >= 0 && j < rows.length)) return;
+  const old = rows[j];
+  // Taking over a slot whose sensor is still answering means dropping a working
+  // sensor off the dashboard -- almost never what someone means to do here.
+  if(old.online && !confirm('Slot ' + (j+1) + ' is online. Replace it anyway?')) return;
+  rows[j] = {addr: spares[i].addr, name: old.name, online: true, live: spares[i].live};
+  spares.splice(i, 1);
+  // The displaced sensor is only worth listing if it is actually on the bus;
+  // an offline one has nothing left to offer.
+  if(old.online) spares.push({addr: old.addr, live: old.live});
+  render(); renderSpares();
+  toast('Slot ' + (j+1) + ' points at the new sensor — press Save to keep it');
+}
+
+function loadSensors(){
+  fetch('/api/sensors').then(r=>r.json()).then(d=>{
+    if(d.fw){
+      $('fw').textContent = 'firmware v' + d.fw;
+      if(d.build) $('fw').title = 'built ' + d.build;
+    }
+    if(typeof d.tmin === 'number') tMin = d.tmin;
+    if(typeof d.tmax === 'number') tMax = d.tmax;
+    // live remembers which stream array and which index this sensor's reading
+    // comes from -- /events is indexed by the firmware's own order, so without
+    // it the temperature column would point at the wrong sensor the moment you
+    // move a row or swap a spare in. 't' is the slot array, 's' the spare one.
+    rows = (d.sensors||[]).map((s,i)=>({addr:s.addr, name:s.name||'', online:s.online,
+                                        live:{a:'t', i:i}}));
+    spares = (d.spare||[]).map((s,i)=>({addr:s.addr, live:{a:'s', i:i}}));
+    render(); renderSpares();
+  }).catch(()=>toast('Could not read the sensor list'));
+}
+
+function saveSensors(){
+  syncNames();
+  $('save').disabled = true;
+  fetch('/api/sensors', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({sensors: rows.map(r=>({addr:r.addr, name:r.name}))})
+  }).then(r=>r.json()).then(d=>{
+    $('save').disabled = false;
+    if(d.ok){ toast('Saved'); loadSensors(); } else { toast('Failed: ' + (d.error||'rejected')); }
+  }).catch(()=>{ $('save').disabled = false; toast('Save failed'); });
+}
+
+$('save').addEventListener('click', saveSensors);
+$('rescan').addEventListener('click', ()=>{
+  syncNames();
+  fetch('/api/sensors/rescan', {method:'POST'})
+    .then(()=>{ toast('Rescanning the bus…'); setTimeout(loadSensors, 2500); })
+    .catch(()=>toast('Rescan failed'));
+});
+
+// ---------------------------------------------------------------- calibration
+function loadCalibration(){
+  fetch('/api/calibration').then(r=>r.json()).then(c=>{
+    $('kI').value = c.kI; $('kV').value = c.kV; $('kP').value = c.kP;
+  }).catch(()=>{});
+}
+
+$('saveCalib').addEventListener('click', ()=>{
+  const body = { kI: parseFloat($('kI').value), kV: parseFloat($('kV').value), kP: parseFloat($('kP').value) };
+  if([body.kI, body.kV, body.kP].some(v=>!isFinite(v) || v <= 0)){
+    toast('Each factor must be a number above 0');
+    return;
+  }
+  fetch('/api/calibration', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)})
+    .then(r=>toast(r.ok ? 'Calibration saved' : 'Save failed'))
+    .catch(()=>toast('Save failed'));
+});
+
+$('resetEnergy').addEventListener('click', ()=>{
+  if(!confirm('Reset accumulated energy counter to 0?')) return;
+  fetch('/api/energy/reset', {method:'POST'})
+    .then(()=>toast('Energy counter reset'))
+    .catch(()=>toast('Reset failed'));
+});
+
+// ---------------------------------------------------------------- mqtt
+// Pretty-printed with the keys picked out, because the whole point is reading it
+// at a glance. textContent everywhere it could carry operator text -- a sensor
+// name goes into the attributes payload, and that is user input.
+function renderPayload(el, obj){
+  // A newline built rather than typed: this file is a C++ raw string literal,
+  // and an escape here is one more thing between the source and the browser.
+  const NL = String.fromCharCode(10);
+  if(!obj){ el.className = 'payload empty'; el.textContent = 'nothing yet'; return; }
+  el.className = 'payload';
+  el.textContent = '';
+  Object.keys(obj).forEach((k, i, all)=>{
+    const key = document.createElement('span');
+    key.className = 'k';
+    key.textContent = '  "' + k + '"';
+    el.appendChild(document.createTextNode(i === 0 ? '{' + NL : ''));
+    el.appendChild(key);
+    const v = obj[k];
+    const val = document.createElement('span');
+    if(v === null){ val.className = 'n'; val.textContent = ': null'; }
+    else val.textContent = ': ' + (typeof v === 'string' ? '"' + v + '"' : v);
+    el.appendChild(val);
+    el.appendChild(document.createTextNode((i < all.length - 1 ? ',' : '') + NL));
+  });
+  el.appendChild(document.createTextNode('}'));
+}
+
+function mqttStatus(d){
+  // "every 30s" alone would misdescribe the schedule the moment a deadband is
+  // set: the preview is what the NEXT publish sends, and that can be sooner.
+  const rbe = (d.dbTemp > 0 || d.dbAmps > 0);
+  $('pEvery').textContent = rbe ? (d.interval + 's, sooner on a jump') : (d.interval + 's');
+  $('limAuto').classList.toggle('off', !d.attrTopic);
+  if(d.fwTitle) $('mqFwTitle').textContent = '"' + d.fwTitle + '"';
+  const detail = d.fwNote ? d.fwNote
+               : d.fwTried ? ('last tried ' + d.fwTried)
+               : ('running v' + (d.fw || '?'));
+  const win = d.fwWindow === 'open'   ? 'checks once on the next connect'
+            : d.fwWindow === 'closed' ? 'window closed until the next restart' : '';
+  $('mqAutoState').textContent = [detail, win].filter(Boolean).join(' · ');
+  renderPayload($('pTele'), d.payload);
+  renderPayload($('pAttr'), d.attrPayload);
+  const bits = [];
+  bits.push(d.enabled ? (d.connected ? 'connected' : 'not connected') : 'disabled');
+  bits.push(d.published + ' published');
+  if(d.early) bits.push(d.early + ' early');
+  if(d.failures) bits.push(d.failures + ' failed');
+  $('mqStat').textContent = bits.join(' · ');
+  const e = $('mqErr');
+  e.textContent = d.error || '';
+  e.style.display = d.error ? 'block' : 'none';
+}
+
+// Fills the form. Only ever called when there cannot be an edit in progress:
+// on page load and straight after a save. Calling it on a timer would wipe
+// whatever the operator was halfway through typing.
+function loadMqtt(){
+  fetch('/api/mqtt').then(r=>r.json()).then(d=>{
+    $('mqOn').checked = d.enabled;
+    $('mqHost').value = d.host || '';
+    $('mqPort').value = d.port;
+    $('mqEvery').value = d.interval;
+    $('mqHold').value = d.confirm;
+    $('mqFast').value = d.minInterval;
+    $('mqDbT').value = d.dbTemp;
+    $('mqDbA').value = d.dbAmps;
+    $('mqUser').value = d.user || '';
+    $('mqCid').value = d.clientId || '';
+    $('mqPub').value = d.pubTopic || '';
+    $('mqSub').value = d.subTopic || '';
+    $('mqAttr').value = d.attrTopic || '';
+    $('mqFwBase').value = d.fwBase || '';
+    $('mqPass').placeholder = d.passSet ? 'saved — type a new one to replace it'
+                                        : 'leave empty for ThingsBoard';
+    mqttStatus(d);
+  }).catch(()=>{});
+}
+
+// The polling counterpart: reads the same endpoint but touches nothing except
+// the status line, so it is safe to run while someone is filling the form in.
+function pollMqtt(){
+  fetch('/api/mqtt').then(r=>r.json()).then(mqttStatus).catch(()=>{});
+}
+
+$('mqSave').addEventListener('click', ()=>{
+  const body = {
+    enabled: $('mqOn').checked,
+    host: $('mqHost').value.trim(),
+    port: parseInt($('mqPort').value, 10) || 1883,
+    interval: parseInt($('mqEvery').value, 10) || 30,
+    // Not `|| 2`: 0 is a real answer here -- send on the first reading past the
+    // deadband -- and it is the one value `||` would quietly overwrite.
+    confirm: (function(){ const v = parseInt($('mqHold').value, 10); return isFinite(v) && v >= 0 ? v : 2; })(),
+    minInterval: parseInt($('mqFast').value, 10) || 5,
+    // An empty box parses to NaN and lands on 0, which is exactly what typing a
+    // 0 means here -- off. Both ways of saying it agree, so there is nothing to
+    // distinguish.
+    dbTemp: parseFloat($('mqDbT').value) || 0,
+    dbAmps: parseFloat($('mqDbA').value) || 0,
+    user: $('mqUser').value.trim(),
+    clientId: $('mqCid').value.trim(),
+    pubTopic: $('mqPub').value.trim(),
+    subTopic: $('mqSub').value.trim(),
+    attrTopic: $('mqAttr').value.trim(),
+    fwBase: $('mqFwBase').value.trim()
+  };
+  if(body.enabled && !body.host){ toast('A broker address is required'); return; }
+  if(!body.attrTopic){ toast('An attributes topic is required -- it is how firmware versions arrive'); return; }
+  if(!body.pubTopic){ toast('A telemetry topic is required'); return; }
+  const pass = $('mqPass').value;
+  if(pass) body.pass = pass;
+
+  $('mqSave').disabled = true;
+  fetch('/api/mqtt', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)})
+    .then(r=>r.json()).then(d=>{
+      $('mqSave').disabled = false;
+      if(!d.ok){ toast('Failed: ' + (d.error||'rejected')); return; }
+      $('mqPass').value = '';
+      toast('Saved — reconnecting to the broker');
+      // Refill now, while nobody can be mid-edit, to pick up anything the board
+      // normalised -- an empty client ID comes back filled in, for one.
+      loadMqtt();
+      // Then just the status: the task rebuilds the link on its next pass, and
+      // asking any sooner always answers "not connected".
+      setTimeout(pollMqtt, 3000);
+    }).catch(()=>{ $('mqSave').disabled = false; toast('Save failed'); });
+});
+
+// Status only, and only while the tab is open -- a poll every few seconds on a
+// page nobody is looking at is a request the board has better things to do than
+// answer.
+setInterval(()=>{ if(current === 'mqtt') pollMqtt(); }, 5000);
+
+// ---------------------------------------------------------------- firmware
+// Read-only: what is running and whether the bootloader has accepted it. The
+// image itself arrives from ThingsBoard, so there is nothing to submit here.
+function kb(n){ return n >= 1048576 ? (n/1048576).toFixed(2) + ' MB' : Math.round(n/1024) + ' KB'; }
+
+function loadOta(){
+  fetch('/api/ota').then(r=>r.json()).then(d=>{
+    $('oFw').textContent = 'v' + d.fw;
+    $('oBuilt').textContent = d.build;
+    $('oRun').textContent = d.running;
+    $('oSize').textContent = kb(d.sketch);
+    // "on probation" is the state worth noticing: the bootloader will put the
+    // previous image back if this one does not survive its window.
+    $('oVerify').textContent = d.verify === 'pending'
+        ? ('on probation · ' + (d.verifyLeft || 0) + 's left')
+        : d.verify === 'confirmed' ? 'confirmed' : '—';
+    $('oVerify').style.color = d.verify === 'pending' ? 'var(--warn)' : '';
+  }).catch(()=>{});
+}
+
+// ---------------------------------------------------------------- wi-fi
+let info = {}, pollTimer = 0, statusTimer = 0, scanTries = 0, scanned = false;
+
+function startWifi(){
+  if(statusTimer) return;
+  status();
+  statusTimer = setInterval(status, 5000);
+  if(!scanned || !$('nets').querySelector('.net')){ scanned = true; scan(false); }
+}
+
+function stopWifi(){
+  clearInterval(statusTimer); statusTimer = 0;
+  clearTimeout(pollTimer);
+}
+
+function status(){
+  fetch('/api/wifi').then(r=>r.json()).then(d=>{
+    info = d;
+    const dot = $('dot');
+    dot.className = 'dot' + (d.connected ? ' ok' : d.portal ? ' portal' : '');
+    $('stateText').textContent = d.connected ? 'Connected to ' + (d.ssid || '?')
+                               : d.portal   ? 'Setup mode — not on a network yet'
+                                            : 'Reconnecting…';
+    const kv = [];
+    if(d.ip)   kv.push(['IP address', d.ip]);
+    if(d.host) kv.push(['Hostname', 'http://' + d.host + '.local/']);
+    if(typeof d.rssi === 'number') kv.push(['Signal', d.rssi + ' dBm']);
+    if(d.portal && d.ap) kv.push(['Setup AP', d.ap]);
+    kv.push(['Saved network', d.saved || '(none)']);
+    $('kv').innerHTML = kv.map(()=>'<dt></dt><dd></dd>').join('');
+    // text via property, not markup: an SSID is user-controlled
+    const dts = $('kv').querySelectorAll('dt'), dds = $('kv').querySelectorAll('dd');
+    kv.forEach(([k,v],i)=>{ dts[i].textContent = k; dds[i].textContent = v; });
+    if(!$('ssid').value && d.saved) $('ssid').value = d.saved;
+  }).catch(()=>{});
+}
+
+function bars(rssi){
+  const n = rssi >= -55 ? 4 : rssi >= -65 ? 3 : rssi >= -75 ? 2 : 1;
+  return '<span class="bars">' + [1,2,3,4].map(i=>`<i class="${i<=n?'on':''}"></i>`).join('') + '</span>';
+}
+
+function renderNets(nets){
+  const box = $('nets');
+  if(!nets.length){
+    box.innerHTML = '<div class="empty">no networks found &mdash; try Scan again</div>';
+    return;
+  }
+  box.innerHTML = nets.map((n,i)=>
+    `<button class="net" data-i="${i}">${bars(n.rssi)}<span class="nm"></span>` +
+    `<span class="lk">${n.lock?'&#128274;':'open'}</span></button>`).join('');
+  const names = box.querySelectorAll('.nm');
+  nets.forEach((n,i)=>{ names[i].textContent = n.ssid; });   // SSID is user text
+  box.querySelectorAll('.net').forEach(b=>b.onclick=()=>{
+    box.querySelectorAll('.net').forEach(o=>o.classList.remove('sel'));
+    b.classList.add('sel');
+    $('ssid').value = nets[+b.dataset.i].ssid;
+    $('pass').focus();
+  });
+}
+
+function scan(force){
+  clearTimeout(pollTimer);
+  if(force){ scanTries = 0; $('wrescan').disabled = true; }
+  fetch('/api/wifi/scan' + (force ? '?force=1' : '')).then(r=>r.json()).then(d=>{
+    scanTries = 0;
+    if(d.scanning){
+      // Keep any list already on screen: blanking it makes a routine rescan
+      // look like everything vanished.
+      if(!$('nets').querySelector('.net')) $('nets').innerHTML = '<div class="empty">scanning&hellip;</div>';
+      pollTimer = setTimeout(()=>scan(false), 1400);
+      return;
+    }
+    $('wrescan').disabled = false;
+    if(d.error && !(d.networks||[]).length){
+      $('nets').innerHTML = '<div class="empty">' + d.error + ' &mdash; press Scan again</div>';
+      return;
+    }
+    renderNets(d.networks || []);
+  }).catch(()=>{
+    // A scan takes the radio off the setup AP for seconds at a time, so a
+    // dropped poll is the normal case mid-sweep, not a failure. Keep asking.
+    if(++scanTries <= 15){ pollTimer = setTimeout(()=>scan(false), 1500); return; }
+    $('wrescan').disabled = false;
+    $('nets').innerHTML = '<div class="empty">lost contact with the board &mdash; rejoin its Wi-Fi, then press Scan again</div>';
+  });
+}
+
+function finish(title, body){
+  $('doneTitle').textContent = title;
+  $('doneBody').innerHTML = body;
+  $('done').classList.add('show');
+}
+
+$('reveal').onclick = ()=>{
+  const p = $('pass');
+  p.type = p.type === 'password' ? 'text' : 'password';
+  $('reveal').textContent = p.type === 'password' ? 'show' : 'hide';
+};
+
+$('wrescan').onclick = ()=>scan(true);
+
+$('wsave').onclick = ()=>{
+  const ssid = $('ssid').value.trim(), pass = $('pass').value;
+  if(!ssid){ toast('Pick a network or type its name'); return; }
+  if(pass.length > 0 && pass.length < 8){ toast('A password must be at least 8 characters'); return; }
+  $('wsave').disabled = true;
+  fetch('/api/wifi', {method:'POST', headers:{'Content-Type':'application/json'},
+                      body: JSON.stringify({ssid, pass})})
+    .then(r=>r.json()).then(d=>{
+      if(!d.ok){ $('wsave').disabled = false; toast('Rejected: ' + (d.error||'unknown')); return; }
+      const host = info.host || 'esp32-powermeter';
+      finish('Saved — rebooting',
+        'The board is restarting and will join <b>' + ssid.replace(/[<>&]/g,'') + '</b>.<br><br>' +
+        'Reconnect your phone or laptop to that same network, then open ' +
+        '<b>http://' + host + '.local/</b><br><br>' +
+        'If it cannot join, the <b>' + (info.ap || 'setup') + '</b> network comes back in about 30 seconds ' +
+        'so you can try again. The status LED blinks slowly while it is waiting for you.');
+    })
+    .catch(()=>{ $('wsave').disabled = false; toast('Could not reach the board'); });
+};
+
+$('forget').onclick = ()=>{
+  if(!confirm('Erase the saved Wi-Fi credentials and restart into setup mode?')) return;
+  $('forget').disabled = true;
+  fetch('/api/wifi/forget', {method:'POST'}).then(r=>r.json()).then(()=>{
+    finish('Credentials erased',
+      'The board is restarting into setup mode. Join its <b>' + (info.ap || 'P1-Setup-XXXX') +
+      '</b> network in about 30 seconds &mdash; the setup page opens by itself.');
+  }).catch(()=>{ $('forget').disabled = false; toast('Could not reach the board'); });
+};
+
+// ------------------------------------------------------- live stream (shared)
+const es = new EventSource('/events');
+es.addEventListener('data', e=>{
+  let d; try{ d = JSON.parse(e.data); }catch(err){ return; }
+
+  $('lv').textContent = d.v.toFixed(1);
+  $('li').textContent = d.i.toFixed(3);
+  $('lp').textContent = d.p.toFixed(1);
+  $('eVal').textContent = d.e.toFixed(3) + ' kWh';
+
+  const temps = d.temps || [], stemps = d.stemps || [];
+  const paint = (el, r, offlineText)=>{
+    if(!el) return;
+    const v = r.live ? (r.live.a === 's' ? stemps : temps)[r.live.i] : undefined;
+    if(v === null || v === undefined){
+      el.textContent = offlineText; el.className = 'temp none'; el.style.color = '';
+      return;
+    }
+    el.textContent = v.toFixed(2) + '°';
+    el.className = 'temp';
+    // Same ramp as the dashboard -- identifying a sensor by its colour only
+    // works if both screens agree on what that colour means.
+    el.style.color = thermalPaint((v - tMin) / ((tMax - tMin) || 1)).text;
+  };
+  rows.forEach((r,i)=>paint($('t'+i), r, 'offline'));
+  // A spare is on the bus by definition, so it has no offline state to show;
+  // it reads "—" only in the gap before the first frame after a swap.
+  spares.forEach((r,i)=>paint($('st'+i), r, '—'));
+});
+
+// /wifi is what the captive portal and setup-mode redirect point at, so that
+// path opens on the Wi-Fi tab; everything else starts on Sensors.
+showTab((location.hash || '').replace('#','') ||
+        (location.pathname.indexOf('/wifi') === 0 ? 'wifi' : 'sensors'));
+loadSensors();
+loadCalibration();
+loadMqtt();
+loadOta();
+</script>
+</body>
+</html>

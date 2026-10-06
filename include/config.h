@@ -50,6 +50,10 @@
 #define STATUS_LED_PIN     2
 #define STATUS_LED_ACTIVE_HIGH true
 
+// ---- Factory Reset Button (BOOT / GPIO0) ------------------------------------
+#define BOOT_BUTTON_PIN           0      // ESP32 onboard BOOT button (active LOW)
+#define FACTORY_RESET_HOLD_MS     10000  // Hold for 10 seconds to trigger factory reset
+
 // ---- Sampling ----------------------------------------------------------------
 #define SENSOR_READ_INTERVAL_MS 1000
 

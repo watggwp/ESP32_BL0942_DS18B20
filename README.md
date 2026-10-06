@@ -689,8 +689,24 @@ python gen_esp32part.py parts.bin
 `pio run -t upload` does **not** touch NVS — it only rewrites the app partition,
 so calibration, sensor names and the Wi-Fi network all survive reflashing. You
 therefore run the setup portal once per board, not once per build.
-`pio run -t erase` wipes all three namespaces along with the firmware, and the
+`pio run -t erase` wipes all namespaces along with the firmware, and the
 board comes back up as `P1-Setup-XXXX`.
+
+---
+
+## Factory Reset (BOOT Button)
+
+To reset the device without a computer:
+1. While the board is running, **press and hold the onboard BOOT button (GPIO0)** for **10 seconds**.
+2. **Visual feedback:**
+   - At **3 seconds**: The status LED begins **fast blinking (5 Hz)** to alert you that a factory reset will occur.
+   - Releasing the button before 10 seconds **cancels** the reset and restores normal LED status.
+   - At **10 seconds**: The LED lights **solid**, the board clears its storage, and reboots automatically after 1 second.
+3. **What is reset:**
+   - **Wi-Fi** (`"wifi"`): Cleared $\rightarrow$ boots into setup portal (`P1-Setup-XXXX`).
+   - **Meter** (`"meter"`): Resets calibration factors ($k_I=1, k_V=1, k_P=1$) and clears accumulated energy ($0\text{ kWh}$).
+   - **Sensors** (`"sensors"`): Clears slot mapping and custom probe names back to auto-discovered order.
+   - **MQTT configuration is PRESERVED:** ThingsBoard / MQTT broker credentials, token, topics, and settings are **not** wiped.
 
 ---
 

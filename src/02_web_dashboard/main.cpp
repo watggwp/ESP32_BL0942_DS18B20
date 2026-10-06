@@ -226,15 +226,94 @@ static void loadCalibration() {
     Serial.printf("Loaded calibration kI=%.4f kV=%.4f kP=%.4f, energy=%.3f kWh\n", kI, kV, kP, energyKWh);
 }
 
+static bool resetWarningActive = false;
+
 // A fault on the meter outranks everything: a board that is on the network but
 // not reading is the more urgent of the two problems.
 static void updateLed(bool meterOk) {
+    if (resetWarningActive) return;
     if (!meterOk) {
         led.setMode(LedMode::BLINK_ERROR);
     } else switch (WiFiPortal::state()) {
         case WiFiPortalState::CONNECTED:  led.setMode(LedMode::SOLID);      break;
         case WiFiPortalState::PORTAL:     led.setMode(LedMode::BLINK_SLOW); break;   // waiting for setup
         case WiFiPortalState::CONNECTING: led.setMode(LedMode::BLINK_FAST); break;
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Factory Reset via BOOT button (GPIO0)
+// ---------------------------------------------------------------------------
+// Holding the BOOT button for FACTORY_RESET_HOLD_MS (10s) resets:
+//   - "wifi": wipes saved credentials -> restarts into setup portal
+//   - "meter": resets calibration (kI, kV, kP = 1.0) and energy counter (0 kWh)
+//   - "sensors": resets custom names and slot mappings
+// NOTE: "mqtt" is explicitly preserved so broker/ThingsBoard credentials remain.
+static void checkFactoryResetButton() {
+    static uint32_t pressStart = 0;
+    static bool resetTriggered = false;
+
+    if (resetTriggered) return;
+
+    if (digitalRead(BOOT_BUTTON_PIN) == LOW) {
+        uint32_t now = millis();
+        if (pressStart == 0) {
+            pressStart = now;
+        }
+        uint32_t held = now - pressStart;
+
+        // Visual warning: after 3 seconds, blink rapidly to alert operator
+        if (held >= 3000 && !resetWarningActive) {
+            resetWarningActive = true;
+            led.setMode(LedMode::BLINK_FAST);
+            Serial.println("\n[BOOT Button] Holding for Factory Reset... Keep holding for 10s (release to cancel).");
+        }
+
+        if (held >= FACTORY_RESET_HOLD_MS) {
+            resetTriggered = true;
+            resetWarningActive = false;
+
+            Serial.println("\n========================================================");
+            Serial.println(">>> FACTORY RESET TRIGGERED BY BOOT BUTTON (10s) <<<");
+            Serial.println("Clearing NVS: 'wifi', 'meter', 'sensors'...");
+            Serial.println("MQTT settings are PRESERVED.");
+            Serial.println("========================================================");
+
+            led.setMode(LedMode::SOLID);
+            led.update();
+
+            // 1. Wipe Wi-Fi
+            Preferences pWifi;
+            pWifi.begin("wifi", false);
+            pWifi.clear();
+            pWifi.end();
+
+            // 2. Wipe Calibration and Energy total
+            Preferences pMeter;
+            pMeter.begin("meter", false);
+            pMeter.clear();
+            pMeter.end();
+
+            // 3. Wipe Sensor slot mapping and names
+            Preferences pSens;
+            pSens.begin("sensors", false);
+            pSens.clear();
+            pSens.end();
+
+            Serial.println("Reset complete. Restarting in 1 second...");
+            delay(1000);
+            ESP.restart();
+        }
+    } else {
+        if (pressStart != 0) {
+            uint32_t held = millis() - pressStart;
+            if (resetWarningActive) {
+                Serial.printf("[BOOT Button] Released after %u ms -- Factory Reset cancelled.\n", held);
+                resetWarningActive = false;
+                updateLed(meter.readAll(lastSample));
+            }
+            pressStart = 0;
+        }
     }
 }
 
@@ -442,6 +521,8 @@ void setup() {
     Serial.println("\n=== ESP32 + BL0942 + DS18B20 -- Web Dashboard Example ===");
     Serial.printf("Firmware v%s (built %s)\n", FIRMWARE_VERSION, FIRMWARE_BUILD);
 
+    pinMode(BOOT_BUTTON_PIN, INPUT_PULLUP);
+
     led.begin(STATUS_LED_PIN, STATUS_LED_ACTIVE_HIGH);
     led.setMode(LedMode::BLINK_FAST);
 
@@ -476,6 +557,7 @@ void setup() {
 }
 
 void loop() {
+    checkFactoryResetButton();
     led.update();
     WiFiPortal::loop();   // above the early return below -- the portal DNS is
                           // polled from here and starves if it is skipped
