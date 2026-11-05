@@ -460,7 +460,7 @@ footer{margin-top:22px;color:var(--muted);font-size:.75rem;text-align:center}
       on a plain broker. Flashing over USB (<code>pio run -t upload</code>) still works with the board in hand.</div>
     <div class="tip" style="margin-top:12px">A freshly flashed image starts <b>on probation</b>: the
       bootloader keeps the old one in the other slot and puts it back unless this one runs for
-      <b>two minutes with Wi-Fi up</b>. So an update that boots into a crash loop, or comes up unable to
+      <b>60 seconds with Wi-Fi up</b>. So an update that boots into a crash loop, or comes up unable to
       reach the network, undoes itself with nobody present. Careful: a power cut inside that window looks
       the same from the outside, and reverts an update that was actually fine.</div>
   </div>

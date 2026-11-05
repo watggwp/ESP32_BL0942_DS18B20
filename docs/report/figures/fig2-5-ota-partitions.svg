@@ -1,0 +1,91 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="760" viewBox="0 0 1600 760" font-family="Leelawadee UI, Segoe UI, Tahoma, sans-serif" font-size="22" fill="#1f2937">
+  <defs>
+    <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#475569"/></marker>
+    <marker id="arg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#16a34a"/></marker>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#dc2626"/></marker>
+  </defs>
+  <rect width="1600" height="760" fill="#ffffff"/>
+
+  <text x="800" y="60" text-anchor="middle" font-size="20" fill="#6b7280">ตารางพาร์ติชันหน่วยความจำแฟลช 4 MB (partitions_p1.csv)</text>
+
+  <!-- flash bar: total 4096K scaled to 1400px => 0.3418 px/K -->
+  <!-- offsets: nvs 36K(20K), otadata 56K(8K), app0 64K(1856K), app1 1920K(1856K), spiffs 3776K(256K), coredump 4032K(64K) ; bootloader area 0-36K -->
+  <g transform="translate(100,100)">
+    <rect x="0" y="0" width="12.3" height="90" fill="#e5e7eb" stroke="#9ca3af"/>
+    <rect x="12.3" y="0" width="6.8" height="90" fill="#fde68a" stroke="#d97706"/>
+    <rect x="19.1" y="0" width="2.7" height="90" fill="#fca5a5" stroke="#dc2626"/>
+    <rect x="21.9" y="0" width="634.3" height="90" fill="#dbeafe" stroke="#2563eb"/>
+    <rect x="656.2" y="0" width="634.3" height="90" fill="#dcfce7" stroke="#16a34a"/>
+    <rect x="1290.5" y="0" width="87.5" height="90" fill="#f3e8ff" stroke="#9333ea"/>
+    <rect x="1378" y="0" width="21.9" height="90" fill="#e5e7eb" stroke="#9ca3af"/>
+
+    <text x="339" y="40" text-anchor="middle" font-size="24" font-weight="600" fill="#1e3a8a">app0  (1856 KB)</text>
+    <text x="339" y="70" text-anchor="middle" font-size="17" fill="#1e40af">ช่องโปรแกรม 1</text>
+    <text x="973" y="40" text-anchor="middle" font-size="24" font-weight="600" fill="#14532d">app1  (1856 KB)</text>
+    <text x="973" y="70" text-anchor="middle" font-size="17" fill="#166534">ช่องโปรแกรม 2</text>
+    <text x="1334" y="40" text-anchor="middle" font-size="16" fill="#581c87">LittleFS</text>
+    <text x="1334" y="64" text-anchor="middle" font-size="14" fill="#6b21a8">256 KB</text>
+
+    <!-- leader labels for tiny partitions -->
+    <line x1="6" y1="90" x2="6" y2="130" stroke="#9ca3af"/>
+    <text x="6" y="152" text-anchor="start" font-size="15" fill="#6b7280">0x000000  bootloader + table</text>
+    <line x1="15.7" y1="90" x2="60" y2="190" stroke="#d97706"/>
+    <text x="64" y="196" font-size="15" fill="#92400e">nvs 20 KB (ค่าตั้งค่า, ตำแหน่งเดิมเสมอ)</text>
+    <line x1="20.5" y1="90" x2="60" y2="230" stroke="#dc2626"/>
+    <text x="64" y="236" font-size="15" fill="#991b1b">otadata 8 KB (ชี้ว่าบูตช่องไหน)</text>
+    <line x1="1389" y1="90" x2="1389" y2="130" stroke="#9ca3af"/>
+    <text x="1399" y="152" text-anchor="end" font-size="15" fill="#6b7280">coredump 64 KB</text>
+
+    <text x="24" y="-12" font-size="14" fill="#6b7280" text-anchor="start">0x010000</text>
+    <text x="656.2" y="-12" font-size="14" fill="#6b7280" text-anchor="middle">0x1E0000</text>
+    <text x="1290.5" y="-12" font-size="14" fill="#6b7280" text-anchor="middle">0x3B0000</text>
+    <text x="1400" y="-12" font-size="14" fill="#6b7280" text-anchor="end">0x400000</text>
+  </g>
+
+  <!-- OTA flow -->
+  <text x="800" y="330" text-anchor="middle" font-size="20" fill="#6b7280">ขั้นตอนการอัปเดตผ่านเครือข่ายและกลไกย้อนกลับ</text>
+
+  <g font-size="17">
+    <rect x="60" y="370" width="250" height="110" rx="12" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"/>
+    <text x="185" y="405" text-anchor="middle" font-weight="600">1. รับแจ้งเวอร์ชันใหม่</text>
+    <text x="185" y="433" text-anchor="middle" fill="#6b7280">ThingsBoard attributes</text>
+    <text x="185" y="458" text-anchor="middle" fill="#6b7280">fw_title + fw_version</text>
+
+    <path d="M310 425 H360" stroke="#475569" stroke-width="2" marker-end="url(#ar)"/>
+
+    <rect x="360" y="370" width="250" height="110" rx="12" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"/>
+    <text x="485" y="405" text-anchor="middle" font-weight="600">2. ดาวน์โหลดลงช่องว่าง</text>
+    <text x="485" y="433" text-anchor="middle" fill="#6b7280">app1 (ขณะ app0 ยังทำงาน)</text>
+    <text x="485" y="458" text-anchor="middle" fill="#6b7280">OTA Task แยกจาก loop</text>
+
+    <path d="M610 425 H660" stroke="#475569" stroke-width="2" marker-end="url(#ar)"/>
+
+    <rect x="660" y="370" width="250" height="110" rx="12" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"/>
+    <text x="785" y="405" text-anchor="middle" font-weight="600">3. ตรวจสอบและรีสตาร์ต</text>
+    <text x="785" y="433" text-anchor="middle" fill="#6b7280">otadata ชี้ไป app1</text>
+    <text x="785" y="458" text-anchor="middle" fill="#6b7280">สถานะ: pending verify</text>
+
+    <path d="M910 425 H960" stroke="#475569" stroke-width="2" marker-end="url(#ar)"/>
+
+    <rect x="960" y="370" width="250" height="110" rx="12" fill="#fffbeb" stroke="#d97706" stroke-width="2"/>
+    <text x="1085" y="405" text-anchor="middle" font-weight="600" fill="#92400e">4. ทดลองทำงาน</text>
+    <text x="1085" y="433" text-anchor="middle" fill="#6b7280">บูตสำเร็จ + ต่อ Wi-Fi ได้</text>
+    <text x="1085" y="458" text-anchor="middle" fill="#6b7280">ภายในเวลาที่กำหนด?</text>
+
+    <path d="M1210 400 H1290" stroke="#16a34a" stroke-width="2.5" marker-end="url(#arg)"/>
+    <text x="1250" y="388" text-anchor="middle" font-size="15" fill="#166534">ผ่าน</text>
+    <rect x="1290" y="360" width="250" height="80" rx="12" fill="#f0fdf4" stroke="#16a34a" stroke-width="2"/>
+    <text x="1415" y="393" text-anchor="middle" font-weight="600" fill="#14532d">5. ยืนยันถาวร</text>
+    <text x="1415" y="420" text-anchor="middle" fill="#166534">app1 เป็นช่องหลัก</text>
+
+    <path d="M1210 455 H1290" stroke="#dc2626" stroke-width="2.5" marker-end="url(#arr)"/>
+    <text x="1250" y="480" text-anchor="middle" font-size="15" fill="#991b1b">ไม่ผ่าน</text>
+    <rect x="1290" y="470" width="250" height="80" rx="12" fill="#fef2f2" stroke="#dc2626" stroke-width="2"/>
+    <text x="1415" y="503" text-anchor="middle" font-weight="600" fill="#991b1b">Rollback อัตโนมัติ</text>
+    <text x="1415" y="530" text-anchor="middle" fill="#b91c1c">บูตกลับ app0 เวอร์ชันเดิม</text>
+  </g>
+
+  <text x="800" y="620" text-anchor="middle" font-size="17" fill="#475569">ครั้งถัดไปสลับบทบาท: ดาวน์โหลดลง app0 ขณะ app1 ทำงาน ช่องที่กำลังทำงานจะไม่ถูกเขียนทับเสมอ</text>
+  <text x="800" y="652" text-anchor="middle" font-size="17" fill="#475569">nvs อยู่ตำแหน่งเดิมทุกเวอร์ชัน ค่าสอบเทียบ kWh และ Wi-Fi จึงไม่หายเมื่ออัปเดต</text>
+  <text x="800" y="700" text-anchor="middle" font-size="15" fill="#6b7280">ตารางพาร์ติชันเองเปลี่ยนผ่าน OTA ไม่ได้ ต้องแฟลชผ่าน USB ครั้งแรก</text>
+</svg>

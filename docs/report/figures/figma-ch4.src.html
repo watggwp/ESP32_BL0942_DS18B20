@@ -1,0 +1,258 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<title>Chapter 4 Figures</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #ffffff; color: #0f172a; font-family: "IBM Plex Sans Thai", sans-serif; }
+  .fig { width: 1600px; background: #ffffff; padding: 48px 56px 56px; margin-bottom: 40px; }
+  .head { margin-bottom: 32px; }
+  .eyebrow { font-size: 18px; font-weight: 600; color: #1d4ed8; }
+  .title { font-size: 34px; font-weight: 600; margin-top: 4px; }
+  .sub { font-size: 20px; color: #64748b; margin-top: 6px; }
+  .card { border: 1.5px solid #e2e8f0; border-radius: 18px; background: #ffffff; padding: 22px 24px; }
+  .card h3 { font-size: 22px; font-weight: 600; }
+  .muted { color: #64748b; }
+  .note { font-size: 18px; color: #64748b; line-height: 1.6; }
+  .pill { display: inline-block; font-size: 16px; font-weight: 600; padding: 6px 14px; border-radius: 999px; }
+  .badge { position: absolute; width: 38px; height: 38px; border-radius: 999px; background: #f59e0b; color: #ffffff; border: 3px solid #ffffff;
+           display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 600; }
+  .item { display: flex; gap: 16px; align-items: flex-start; }
+  .item .n { width: 34px; height: 34px; flex: none; border-radius: 999px; background: #f59e0b; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 17px; font-weight: 600; }
+  .item b { display: block; font-size: 20px; font-weight: 600; }
+  .item span { display: block; font-size: 17px; color: #64748b; line-height: 1.55; margin-top: 2px; }
+  table { border-collapse: collapse; width: 100%; }
+  th { font-size: 17px; font-weight: 600; text-align: left; color: #475569; background: #f8fafc; padding: 14px 18px; border-bottom: 1.5px solid #e2e8f0; }
+  td { font-size: 18px; padding: 14px 18px; border-bottom: 1px solid #e2e8f0; vertical-align: top; }
+  .ok { display: inline-block; font-size: 15px; font-weight: 600; color: #15803d; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 999px; padding: 3px 12px; }
+  .blank { display: inline-block; width: 90px; height: 28px; border-bottom: 1.5px dashed #94a3b8; }
+  .mono { font-family: "IBM Plex Mono", monospace; }
+</style>
+</head>
+<body>
+
+<!-- ================= 4.1 DASHBOARD ================= -->
+<div class="fig" id="f41">
+  <div class="head">
+    <div class="eyebrow">ผลการพัฒนา</div>
+    <div class="title">หน้าแดชบอร์ดแสดงผลแบบเรียลไทม์</div>
+    <div class="sub">เปิดได้จากเบราว์เซอร์ทุกเครื่องในเครือข่าย ค่าอัปเดตเองทุก 1 วินาที (ภาพจากหน้าจอตัวอย่าง ข้อมูลจำลอง)</div>
+  </div>
+  <div style="display:flex; gap:48px; align-items:flex-start;">
+    <div style="position:relative; width:860px; height:867px; border-radius:18px; overflow:hidden; border:1.5px solid #e2e8f0;">
+      <img src="__DASH__" width="860" height="867" style="display:block;">
+      <div class="badge" style="left:183px; top:110px;">1</div>
+      <div class="badge" style="left:612px; top:117px;">2</div>
+      <div class="badge" style="left:620px; top:300px;">3</div>
+      <div class="badge" style="left:620px; top:398px;">4</div>
+      <div class="badge" style="left:230px; top:500px;">5</div>
+    </div>
+    <div style="flex:1; display:flex; flex-direction:column; gap:26px; padding-top:8px;">
+      <div class="item"><div class="n">1</div><div><b>มาตรวัดกำลังไฟฟ้า</b><span>แสดงกำลังไฟฟ้าจริง (วัตต์) ในรูปหน้าปัด อ่านค่าได้จากระยะไกล</span></div></div>
+      <div class="item"><div class="n">2</div><div><b>ค่าทางไฟฟ้าและสถานะเครื่อง</b><span>แรงดัน กระแส ความถี่ กำลังไฟฟ้าปรากฏ หน่วยความจำว่าง และเวลาทำงาน</span></div></div>
+      <div class="item"><div class="n">3</div><div><b>กราฟกำลังไฟฟ้าย้อนหลัง</b><span>เห็นแนวโน้มการใช้ไฟในช่วงไม่กี่นาทีที่ผ่านมา</span></div></div>
+      <div class="item"><div class="n">4</div><div><b>พลังงานสะสม (kWh)</b><span>คำนวณจากกำลังไฟฟ้าทุกวินาที และบันทึกไว้ไม่หายเมื่อไฟดับ</span></div></div>
+      <div class="item"><div class="n">5</div><div><b>แผนที่ความร้อน 3 × 3</b><span>วงกลมคือค่าที่วัดจริง พื้นที่ระหว่างวงกลมคือค่าประมาณ สีไล่จากน้ำเงิน (เย็น) ถึงแดง (ร้อน) ไม่ใช้สีเขียว เพื่อไม่ให้สื่อว่า "ปกติ" ในจุดที่ร้อน</span></div></div>
+      <div class="card" style="padding:16px 20px; background:#f8fafc;"><div class="note" style="font-size:16px;">หน้านี้อ่านอย่างเดียว ไม่มีปุ่มควบคุม เหมาะสำหรับเปิดค้างไว้บนจอหน้าตู้</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= 4.2 SENSOR SETTINGS ================= -->
+<div class="fig" id="f42">
+  <div class="head">
+    <div class="eyebrow">ผลการพัฒนา</div>
+    <div class="title">หน้าตั้งค่าเซนเซอร์ (แท็บ Sensors)</div>
+    <div class="sub">ผู้ติดตั้งตั้งชื่อตำแหน่ง จัดลำดับ และเปลี่ยนเซนเซอร์ที่เสียได้เองจากโทรศัพท์ (ภาพจากหน้าจอตัวอย่าง)</div>
+  </div>
+  <div style="display:flex; gap:56px; align-items:flex-start;">
+    <div style="position:relative; width:555px; height:1005px; border-radius:18px; overflow:hidden; border:1.5px solid #e2e8f0;">
+      <img src="__SET__" width="555" height="1005" style="display:block;">
+      <div class="badge" style="left:62px; top:232px;">1</div>
+      <div class="badge" style="left:250px; top:232px;">2</div>
+      <div class="badge" style="left:500px; top:232px;">3</div>
+      <div class="badge" style="left:62px; top:430px;">4</div>
+      <div class="badge" style="left:461px; top:952px;">5</div>
+    </div>
+    <div style="flex:1; display:flex; flex-direction:column; gap:28px; padding-top:20px;">
+      <div class="item"><div class="n">1</div><div><b>อุณหภูมิสดของแต่ละแถว</b><span>ใช้จับเซนเซอร์ให้อุ่นขึ้น แล้วดูว่าแถวใดเปลี่ยน เพื่อระบุว่าเซนเซอร์ตัวนั้นติดตั้งอยู่ที่ใด</span></div></div>
+      <div class="item"><div class="n">2</div><div><b>ชื่อตำแหน่ง และหมายเลข ROM</b><span>ตั้งชื่อเป็นภาษาไทยได้ ชื่อนี้ส่งขึ้น ThingsBoard ด้วย แดชบอร์ดบนแพลตฟอร์มจึงแสดงชื่อเดียวกัน</span></div></div>
+      <div class="item"><div class="n">3</div><div><b>ปุ่มเลื่อนลำดับ</b><span>จัดลำดับให้ตรงกับตำแหน่งบนแผนที่ความร้อน</span></div></div>
+      <div class="item"><div class="n">4</div><div><b>เซนเซอร์ที่ขาดการเชื่อมต่อ</b><span>แสดง offline เฉพาะแถวของตัวเอง แถวอื่นไม่เลื่อน และส่งค่าเป็นค่าว่างแทนการส่ง 0</span></div></div>
+      <div class="item"><div class="n">5</div><div><b>เซนเซอร์สำรองที่พบบนสาย</b><span>เมื่อต่อเซนเซอร์ใหม่แทนตัวที่เสีย กด Use เพื่อให้รับตำแหน่งเดิม ชื่อและตำแหน่งบนแดชบอร์ดยังเหมือนเดิม</span></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= 4.3 SCOPE CHECKLIST ================= -->
+<div class="fig" id="f43">
+  <div class="head">
+    <div class="eyebrow">สรุปผล</div>
+    <div class="title">ผลการดำเนินงานเทียบกับขอบเขตของโครงงาน</div>
+    <div class="sub">ทุกข้อในขอบเขต (หัวข้อ 1.7) พัฒนาและใช้งานได้ในเฟิร์มแวร์ปัจจุบัน</div>
+  </div>
+  <div class="card" style="padding:0; overflow:hidden;">
+    <table>
+      <tr><th style="width:90px;">ข้อ</th><th style="width:560px;">ขอบเขต</th><th style="width:150px;">ผล</th><th>สิ่งที่ทำได้จริง</th></tr>
+      <tr><td>1.7.1</td><td>วัดแรงดัน กระแส กำลังไฟฟ้า ความถี่ และพลังงานสะสม</td><td><span class="ok">ทำได้</span></td><td class="muted">อ่านจาก BL0942 ทุก 1 วินาที ตรวจ Checksum ทุกชุด</td></tr>
+      <tr><td>1.7.2</td><td>วัดอุณหภูมิ 9 จุด และกำหนดตำแหน่งเซนเซอร์</td><td><span class="ok">ทำได้</span></td><td class="muted">ผูก ROM กับตำแหน่ง T1 ถึง T9 เปลี่ยนตัวเสียได้</td></tr>
+      <tr><td>1.7.3</td><td>แสดงผลแบบเรียลไทม์ผ่านเว็บเบราว์เซอร์</td><td><span class="ok">ทำได้</span></td><td class="muted">แดชบอร์ด และแผนที่ความร้อน อัปเดตผ่าน SSE</td></tr>
+      <tr><td>1.7.4</td><td>ตั้งค่า Wi-Fi และเซิร์ฟเวอร์ผ่านหน้าเว็บ</td><td><span class="ok">ทำได้</span></td><td class="muted">Captive portal และหน้าตั้งค่า 5 แท็บ ค่าเก็บใน NVS</td></tr>
+      <tr><td>1.7.5</td><td>ส่งข้อมูลไป ThingsBoard ผ่าน MQTT และส่งทันทีเมื่อค่าเกินเกณฑ์</td><td><span class="ok">ทำได้</span></td><td class="muted">Heartbeat 30 วินาที, Deadband 2 °C / 0.5 A, ยืนยัน 2 วินาที</td></tr>
+      <tr><td>1.7.6</td><td>อัปเดตเฟิร์มแวร์ผ่านเครือข่าย และย้อนกลับอัตโนมัติ</td><td><span class="ok">ทำได้</span></td><td class="muted">สั่งจาก ThingsBoard, ทดลองทำงาน 60 วินาทีก่อนยืนยัน</td></tr>
+      <tr><td>1.7.7</td><td>สอบเทียบค่า และเก็บค่าตั้งค่าในหน่วยความจำถาวร</td><td><span class="ok">ทำได้</span></td><td class="muted">ค่า kV kI kP และ kWh ไม่หายเมื่อไฟดับหรืออัปเดต</td></tr>
+    </table>
+  </div>
+  <div style="display:flex; gap:24px; margin-top:24px;">
+    <div class="card" style="flex:1; padding:18px 22px; background:#eff6ff; border-color:#bfdbfe;"><div class="note"><b style="color:#1d4ed8;">ทำได้เพิ่มจากขอบเขต</b> Factory Reset ด้วยปุ่ม BOOT, ไฟ LED แจ้งสถานะ 4 แบบ และแม่แบบแดชบอร์ด ThingsBoard</div></div>
+  </div>
+</div>
+
+<!-- ================= 4.4 FLASH USAGE ================= -->
+<div class="fig" id="f44">
+  <div class="head">
+    <div class="eyebrow">ผลการปรับปรุง</div>
+    <div class="title">การใช้หน่วยความจำโปรแกรม ก่อนและหลังปรับตารางพาร์ติชัน</div>
+    <div class="sub">ตารางเดิมเหลือพื้นที่ให้เพิ่มความสามารถเพียง 64 KB หลังปรับเพิ่มเป็น 654 KB โดยยังคงรองรับ OTA</div>
+  </div>
+  <div style="display:flex; gap:32px;">
+    <div class="card" style="flex:1; padding:30px;">
+      <div style="font-size:20px; font-weight:600;">สัดส่วนการใช้ช่องโปรแกรม (app slot)</div>
+      <div style="margin-top:28px;">
+        <div style="display:flex; justify-content:space-between; font-size:18px;"><span>ตารางเดิม (default) 1,280 KB</span><b style="color:#b91c1c;">95.1%</b></div>
+        <div style="height:30px; background:#f1f5f9; border-radius:999px; margin-top:8px; overflow:hidden;"><div style="width:95.1%; height:30px; background:#ef4444; border-radius:999px;"></div></div>
+      </div>
+      <div style="margin-top:30px;">
+        <div style="display:flex; justify-content:space-between; font-size:18px;"><span>ตารางใหม่ (partitions_p1) 1,856 KB</span><b style="color:#15803d;">65.6%</b></div>
+        <div style="height:30px; background:#f1f5f9; border-radius:999px; margin-top:8px; overflow:hidden;"><div style="width:65.6%; height:30px; background:#22c55e; border-radius:999px;"></div></div>
+      </div>
+    </div>
+    <div class="card" style="flex:1; padding:30px;">
+      <div style="font-size:20px; font-weight:600;">พื้นที่ว่างสำหรับพัฒนาต่อ</div>
+      <div style="display:flex; align-items:flex-end; gap:60px; height:220px; margin-top:24px; padding-left:40px; border-bottom:1.5px solid #e2e8f0;">
+        <div style="display:flex; flex-direction:column; align-items:center; gap:8px;"><b style="font-size:22px; color:#b91c1c;">64 KB</b><div style="width:120px; height:20px; background:#ef4444; border-radius:8px 8px 0 0;"></div></div>
+        <div style="display:flex; flex-direction:column; align-items:center; gap:8px;"><b style="font-size:22px; color:#15803d;">654 KB</b><div style="width:120px; height:180px; background:#22c55e; border-radius:8px 8px 0 0;"></div></div>
+      </div>
+      <div style="display:flex; gap:60px; padding-left:40px; margin-top:10px;">
+        <div style="width:120px; text-align:center; font-size:17px; color:#64748b;">ตารางเดิม</div>
+        <div style="width:120px; text-align:center; font-size:17px; color:#64748b;">ตารางใหม่</div>
+      </div>
+      <div style="font-size:30px; font-weight:600; color:#15803d; margin-top:14px;">เพิ่มขึ้นประมาณ 10 เท่า</div>
+    </div>
+  </div>
+  <div class="card" style="margin-top:24px; padding:16px 22px; background:#f8fafc;"><div class="note"><b style="color:#0f172a;">ที่มาของพื้นที่</b> ตารางเดิมจองพื้นที่ SPIFFS 1,408 KB ที่เฟิร์มแวร์ไม่ได้ใช้ (หน้าเว็บฝังอยู่ในโปรแกรม ค่าตั้งค่าอยู่ใน NVS) จึงนำมาขยายช่องโปรแกรมทั้งสองช่อง และยังคงตำแหน่ง NVS เดิมไว้ ค่าในอุปกรณ์ที่ใช้งานอยู่จึงไม่หาย</div></div>
+</div>
+
+<!-- ================= 4.5 MQTT MESSAGE VOLUME ================= -->
+<div class="fig" id="f45">
+  <div class="head">
+    <div class="eyebrow">ผลการปรับปรุง</div>
+    <div class="title">จำนวนข้อความ MQTT ต่อชั่วโมง เทียบวิธีการส่ง</div>
+    <div class="sub">คำนวณจากค่าตั้งค่าของระบบ: Heartbeat 30 วินาที และเว้นอย่างน้อย 5 วินาทีเมื่อส่งก่อนรอบ</div>
+  </div>
+  <div class="card" style="padding:34px 36px;">
+    <div style="display:flex; flex-direction:column; gap:30px;">
+      <div style="display:flex; align-items:center; gap:24px;">
+        <div style="width:420px;"><div style="font-size:20px; font-weight:600;">ส่งทุก 1 วินาที</div><div class="muted" style="font-size:16px;">ส่งทุกค่าที่อ่านได้</div></div>
+        <div style="flex:1; height:40px; background:#f1f5f9; border-radius:10px;"><div style="width:100%; height:40px; background:#94a3b8; border-radius:10px;"></div></div>
+        <div style="width:130px; text-align:right; font-size:24px; font-weight:600;">3,600</div>
+      </div>
+      <div style="display:flex; align-items:center; gap:24px;">
+        <div style="width:420px;"><div style="font-size:20px; font-weight:600; color:#b91c1c;">Report by Exception ขณะค่าเปลี่ยนต่อเนื่อง</div><div class="muted" style="font-size:16px;">กรณีมากที่สุด ถูกจำกัดที่ 1 ครั้งต่อ 5 วินาที</div></div>
+        <div style="flex:1; height:40px; background:#f1f5f9; border-radius:10px;"><div style="width:20%; height:40px; background:#f97316; border-radius:10px;"></div></div>
+        <div style="width:130px; text-align:right; font-size:24px; font-weight:600; color:#c2410c;">720</div>
+      </div>
+      <div style="display:flex; align-items:center; gap:24px;">
+        <div style="width:420px;"><div style="font-size:20px; font-weight:600; color:#15803d;">Report by Exception ขณะค่านิ่ง</div><div class="muted" style="font-size:16px;">สถานะปกติส่วนใหญ่ของตู้ควบคุม</div></div>
+        <div style="flex:1; height:40px; background:#f1f5f9; border-radius:10px;"><div style="width:3.4%; height:40px; background:#22c55e; border-radius:10px;"></div></div>
+        <div style="width:130px; text-align:right; font-size:24px; font-weight:600; color:#15803d;">120</div>
+      </div>
+    </div>
+  </div>
+  <div style="display:flex; gap:24px; margin-top:24px;">
+    <div class="card" style="flex:1; padding:22px 24px; background:#f0fdf4; border-color:#bbf7d0;"><div style="font-size:30px; font-weight:600; color:#15803d;">ลดลง 96.7%</div><div class="note">ในสภาวะปกติ เทียบกับการส่งทุกวินาที</div></div>
+    <div class="card" style="flex:1; padding:22px 24px; background:#eff6ff; border-color:#bfdbfe;"><div style="font-size:30px; font-weight:600; color:#1d4ed8;">เร็วสุด 2 วินาที</div><div class="note">เวลาตั้งแต่ค่าเกินเกณฑ์จนถึงการส่ง แทนการรอสูงสุด 30 วินาที</div></div>
+    <div class="card" style="flex:1; padding:22px 24px; background:#f8fafc;"><div style="font-size:30px; font-weight:600;">ข้อมูลรูปแบบเดิม</div><div class="note">ข้อความที่ส่งก่อนรอบมีรูปแบบเดียวกับข้อความปกติ ฝั่งแพลตฟอร์มไม่ต้องแก้ไข</div></div>
+  </div>
+</div>
+
+<!-- ================= 4.6 ACCURACY TABLE TEMPLATE ================= -->
+<div class="fig" id="f46">
+  <div class="head">
+    <div class="eyebrow">ผลการทดสอบ</div>
+    <div class="title">ตารางบันทึกผลการทดสอบความแม่นยำ</div>
+    <div class="sub">เทียบค่าที่ระบบแสดงกับเครื่องวัดมาตรฐาน บนโหลดคงที่ หลังสอบเทียบแล้ว</div>
+  </div>
+  <div class="card" style="padding:0; overflow:hidden;">
+    <table>
+      <tr><th style="width:300px;">ปริมาณที่วัด</th><th>เครื่องวัดมาตรฐาน</th><th>ค่าจากระบบ</th><th>ผลต่าง</th><th>ความคลาดเคลื่อน (%)</th></tr>
+      <tr><td>แรงดันไฟฟ้า (V)</td><td><span class="blank"></span></td><td><span class="blank"></span></td><td><span class="blank"></span></td><td><span class="blank"></span></td></tr>
+      <tr><td>กระแสไฟฟ้า (A)</td><td><span class="blank"></span></td><td><span class="blank"></span></td><td><span class="blank"></span></td><td><span class="blank"></span></td></tr>
+      <tr><td>กำลังไฟฟ้า (W)</td><td><span class="blank"></span></td><td><span class="blank"></span></td><td><span class="blank"></span></td><td><span class="blank"></span></td></tr>
+      <tr><td>ความถี่ (Hz)</td><td><span class="blank"></span></td><td><span class="blank"></span></td><td><span class="blank"></span></td><td><span class="blank"></span></td></tr>
+      <tr><td>อุณหภูมิ T1 (°C)</td><td><span class="blank"></span></td><td><span class="blank"></span></td><td><span class="blank"></span></td><td><span class="blank"></span></td></tr>
+      <tr><td>อุณหภูมิ T2 ถึง T9 (°C)</td><td colspan="4" class="muted">บันทึกเพิ่มตามจำนวนจุดที่ทดสอบ</td></tr>
+    </table>
+  </div>
+  <div style="display:flex; gap:24px; margin-top:24px;">
+    <div class="card" style="flex:1; padding:22px 26px; background:#f8fafc;"><div class="muted" style="font-size:16px;">สูตรความคลาดเคลื่อน</div><div style="font-size:24px; font-weight:600; margin-top:6px;">|ค่าจากระบบ − ค่ามาตรฐาน| ÷ ค่ามาตรฐาน × 100</div></div>
+    <div class="card" style="flex:1; padding:22px 26px;"><div class="muted" style="font-size:16px;">บันทึกเงื่อนไขการทดสอบ</div><div style="font-size:18px; margin-top:6px; line-height:1.8;">โหลดที่ใช้ <span class="blank" style="width:220px;"></span><br>เครื่องวัดมาตรฐาน <span class="blank" style="width:180px;"></span></div></div>
+  </div>
+</div>
+
+<!-- ================= 4.7 PROBLEMS AND FIXES ================= -->
+<div class="fig" id="f47">
+  <div class="head">
+    <div class="eyebrow">ปัญหาและอุปสรรค</div>
+    <div class="title">ปัญหาที่พบระหว่างพัฒนา และแนวทางแก้ไข</div>
+    <div class="sub">ทุกข้อพบจากการทดสอบกับฮาร์ดแวร์จริง และแก้ไขแล้วในเฟิร์มแวร์ปัจจุบัน</div>
+  </div>
+  <div style="display:flex; flex-wrap:wrap; gap:24px;">
+    <div class="card" style="width:476px; padding:24px;">
+      <div class="pill" style="background:#fef2f2; color:#b91c1c;">ปัญหา</div>
+      <h3 style="margin-top:12px;">BL0942 ไม่ตอบสนอง</h3>
+      <div class="note" style="margin-top:6px;">วงจรระบุความเร็ว 9600 bps และที่อยู่ 0 แต่บอร์ดจริงเป็น 4800 bps และที่อยู่ 3</div>
+      <div class="pill" style="background:#f0fdf4; color:#15803d; margin-top:16px;">แก้ไข</div>
+      <div class="note" style="margin-top:6px; color:#0f172a;">วัดขาสัญญาณบนบอร์ดจริง แล้วกำหนดค่าใน config.h</div>
+    </div>
+    <div class="card" style="width:476px; padding:24px;">
+      <div class="pill" style="background:#fef2f2; color:#b91c1c;">ปัญหา</div>
+      <h3 style="margin-top:12px;">หน่วยความจำโปรแกรมใกล้เต็ม</h3>
+      <div class="note" style="margin-top:6px;">ช่องโปรแกรมถูกใช้ไป 95.1% เพิ่มความสามารถต่อไม่ได้</div>
+      <div class="pill" style="background:#f0fdf4; color:#15803d; margin-top:16px;">แก้ไข</div>
+      <div class="note" style="margin-top:6px; color:#0f172a;">ออกแบบตารางพาร์ติชันใหม่ เหลือใช้ 65.6% และยังรองรับ OTA</div>
+    </div>
+    <div class="card" style="width:476px; padding:24px;">
+      <div class="pill" style="background:#fef2f2; color:#b91c1c;">ปัญหา</div>
+      <h3 style="margin-top:12px;">ข้อความ MQTT หายโดยไม่แจ้ง</h3>
+      <div class="note" style="margin-top:6px;">ไลบรารีมีบัฟเฟอร์ 256 ไบต์ ข้อมูล 9 จุดรวมค่าไฟฟ้ายาวเกิน จึงถูกทิ้ง</div>
+      <div class="pill" style="background:#f0fdf4; color:#15803d; margin-top:16px;">แก้ไข</div>
+      <div class="note" style="margin-top:6px; color:#0f172a;">ขยายบัฟเฟอร์เป็น 1,024 ไบต์</div>
+    </div>
+    <div class="card" style="width:476px; padding:24px;">
+      <div class="pill" style="background:#fef2f2; color:#b91c1c;">ปัญหา</div>
+      <h3 style="margin-top:12px;">ลำดับเซนเซอร์สลับกันเอง</h3>
+      <div class="note" style="margin-top:6px;">ถอดเซนเซอร์หนึ่งตัว ตัวที่อยู่ถัดไปเลื่อนลำดับทั้งหมด ข้อมูลผิดตำแหน่ง</div>
+      <div class="pill" style="background:#f0fdf4; color:#15803d; margin-top:16px;">แก้ไข</div>
+      <div class="note" style="margin-top:6px; color:#0f172a;">ผูกหมายเลข ROM กับตำแหน่ง และเก็บใน NVS</div>
+    </div>
+    <div class="card" style="width:476px; padding:24px;">
+      <div class="pill" style="background:#fef2f2; color:#b91c1c;">ปัญหา</div>
+      <h3 style="margin-top:12px;">หน้าตั้งค่า Wi-Fi ค้าง</h3>
+      <div class="note" style="margin-top:6px;">รอการแปลงอุณหภูมิ 750 ms ทุกวินาที ทำให้ DNS ของหน้าตั้งค่าตอบไม่ทัน</div>
+      <div class="pill" style="background:#f0fdf4; color:#15803d; margin-top:16px;">แก้ไข</div>
+      <div class="note" style="margin-top:6px; color:#0f172a;">สั่งแปลงล่วงหน้าหนึ่งรอบ และอ่านแบบไม่รอ</div>
+    </div>
+    <div class="card" style="width:476px; padding:24px;">
+      <div class="pill" style="background:#fef2f2; color:#b91c1c;">ปัญหา</div>
+      <h3 style="margin-top:12px;">อัปเดตซ้ำไม่รู้จบ</h3>
+      <div class="note" style="margin-top:6px;">หากไฟล์บนเซิร์ฟเวอร์มีเลขเวอร์ชันไม่ตรง อุปกรณ์จะดาวน์โหลดและรีสตาร์ตวนซ้ำ</div>
+      <div class="pill" style="background:#f0fdf4; color:#15803d; margin-top:16px;">แก้ไข</div>
+      <div class="note" style="margin-top:6px; color:#0f172a;">บันทึกเวอร์ชันที่ลองแล้วใน NVS และจำกัดจำนวนครั้ง</div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

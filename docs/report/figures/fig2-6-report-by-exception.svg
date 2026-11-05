@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="700" viewBox="0 0 1600 700" font-family="Leelawadee UI, Segoe UI, Tahoma, sans-serif" font-size="20" fill="#1f2937">
+  <defs>
+    <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10z" fill="#475569"/></marker>
+  </defs>
+  <rect width="1600" height="700" fill="#ffffff"/>
+
+  <!-- plot area: x 140..1500 (time 0..120 s => 11.33 px/s), y 100..480 (temp 30..50 => 19 px/degC) -->
+  <!-- y(t) = 480 - (T-30)*19 ; x(s) = 140 + s*11.333 -->
+
+  <!-- deadband band around last published 36 C (+-2) : 34..38 => y 404..328 -->
+  <rect x="140" y="328" width="1360" height="76" fill="#dbeafe" opacity="0.6"/>
+  <line x1="140" y1="366" x2="1500" y2="366" stroke="#2563eb" stroke-width="2" stroke-dasharray="8 6"/>
+  <text x="1300" y="392" text-anchor="middle" font-size="15" fill="#1e3a8a">ค่าที่ส่งล่าสุด 36 C</text>
+  <text x="1505" y="335" font-size="14" fill="#2563eb">+2 C</text>
+  <text x="1505" y="408" font-size="14" fill="#2563eb">-2 C</text>
+  <text x="650" y="320" text-anchor="middle" font-size="15" fill="#1e3a8a">Deadband +-2 C (ไม่ส่งถ้ายังอยู่ในแถบนี้)</text>
+
+  <!-- axes -->
+  <line x1="140" y1="100" x2="140" y2="480" stroke="#94a3b8" stroke-width="1.5"/>
+  <line x1="140" y1="480" x2="1500" y2="480" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#ar)"/>
+  <text x="60" y="110" font-size="15" fill="#6b7280">50 C</text>
+  <text x="60" y="295" font-size="15" fill="#6b7280">40 C</text>
+  <text x="60" y="485" font-size="15" fill="#6b7280">30 C</text>
+  <text x="820" y="520" text-anchor="middle" font-size="16" fill="#6b7280">เวลา (วินาที)</text>
+  <g font-size="14" fill="#6b7280" text-anchor="middle">
+    <text x="140" y="500">0</text><text x="480" y="500">30</text><text x="820" y="500">60</text><text x="1160" y="500">90</text><text x="1500" y="500">120</text>
+  </g>
+
+  <!-- heartbeat ticks every 30 s -->
+  <g stroke="#9ca3af" stroke-width="1" stroke-dasharray="3 5">
+    <line x1="480" y1="100" x2="480" y2="480"/><line x1="820" y1="100" x2="820" y2="480"/><line x1="1160" y1="100" x2="1160" y2="480"/><line x1="1500" y1="100" x2="1500" y2="480"/>
+  </g>
+  <text x="480" y="92" text-anchor="middle" font-size="14" fill="#6b7280">Heartbeat 30 s</text>
+  <text x="820" y="92" text-anchor="middle" font-size="14" fill="#6b7280">Heartbeat 60 s</text>
+  <text x="1160" y="92" text-anchor="middle" font-size="14" fill="#6b7280">Heartbeat 90 s</text>
+
+  <!-- temperature curve: flat 36 until 20s, spike glitch at 24s, back, then climbs from 60s to 46 at 90s, flat after -->
+  <!-- points (s,T): (0,36)(20,36.2)(23,36)(24,39.5)(25,36.1)(40,36)(60,36.3)(65,37.5)(70,38.6)(75,40)(80,41.8)(85,43.6)(90,45)(100,46)(120,46.2) -->
+  <polyline fill="none" stroke="#ea580c" stroke-width="3"
+    points="140,366 366.7,362.2 400.7,366 412,285.5 423.3,364.1 593.3,366 820,360.3 876.7,337.5 933.3,316.6 990,290 1046.7,255.8 1103.3,221.6 1160,195 1273.3,176 1500,172.2"/>
+
+  <!-- glitch annotation -->
+  <circle cx="412" cy="285.5" r="7" fill="#ffffff" stroke="#9ca3af" stroke-width="2"/>
+  <text x="412" y="240" text-anchor="middle" font-size="15" fill="#6b7280">สัญญาณรบกวนชั่วขณะ</text>
+  <text x="412" y="262" text-anchor="middle" font-size="14" fill="#6b7280">ตกกลับใน 2 วินาที: ไม่ส่ง</text>
+
+  <!-- sends: heartbeat at 30 s (T=36), crossing +2 at ~70 s (38.6) -> confirm 2 s -> send at 72 s; next published 38.6 => new band; crossing again ~ at 40.6 => ~77 s -> send 79; etc. Simplify: mark sends at 30, 72, 79, 85, 90(heartbeat skipped shown), 120 -->
+  <g>
+    <circle cx="480" cy="366" r="9" fill="#2563eb"/>
+    <circle cx="956" cy="306" r="9" fill="#dc2626"/>
+    <circle cx="1035" cy="263" r="9" fill="#dc2626"/>
+    <circle cx="1114" cy="215" r="9" fill="#dc2626"/>
+    <circle cx="1193" cy="190" r="9" fill="#dc2626"/>
+    <circle cx="1500" cy="172" r="9" fill="#2563eb"/>
+  </g>
+  <!-- confirm window bracket at 70-72 s -->
+  <line x1="933" y1="560" x2="956" y2="560" stroke="#dc2626" stroke-width="3"/>
+  <line x1="933" y1="552" x2="933" y2="568" stroke="#dc2626" stroke-width="2"/>
+  <line x1="956" y1="552" x2="956" y2="568" stroke="#dc2626" stroke-width="2"/>
+  <line x1="933" y1="316.6" x2="933" y2="548" stroke="#dc2626" stroke-width="1" stroke-dasharray="4 4"/>
+  <line x1="956" y1="306" x2="956" y2="548" stroke="#dc2626" stroke-width="1" stroke-dasharray="4 4"/>
+  <text x="944" y="590" text-anchor="middle" font-size="14" fill="#991b1b">ข้ามเส้น +2 C แล้วยังอยู่ 2 วิ -> ส่งทันที</text>
+
+  <!-- legend -->
+  <g font-size="16">
+    <circle cx="170" cy="640" r="8" fill="#2563eb"/><text x="190" y="646">ส่งตามรอบ Heartbeat (ช้าสุดทุก 30 วินาที)</text>
+    <circle cx="620" cy="640" r="8" fill="#dc2626"/><text x="640" y="646">ส่งทันทีเพราะค่าเปลี่ยนเกิน Deadband (เว้นอย่างน้อย 5 วินาที)</text>
+    <line x1="1210" y1="640" x2="1250" y2="640" stroke="#ea580c" stroke-width="3"/><text x="1260" y="646">อุณหภูมิที่วัดได้จริง</text>
+  </g>
+  <text x="800" y="680" text-anchor="middle" font-size="15" fill="#6b7280">ช่วงค่าคงที่ (0-60 วินาที) ส่งเพียง 2 ครั้ง ช่วงอุณหภูมิกำลังสูงขึ้น (70-90 วินาที) ส่งทุก 5-7 วินาทีโดยไม่ต้องรอรอบ</text>
+</svg>

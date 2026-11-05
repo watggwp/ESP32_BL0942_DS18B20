@@ -1,0 +1,116 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="640" viewBox="0 0 1600 640" font-family="Leelawadee UI, Segoe UI, Tahoma, sans-serif" font-size="22" fill="#1f2937">
+  <rect width="1600" height="640" fill="#ffffff"/>
+
+  <!-- ESP32 -->
+  <rect x="50" y="150" width="240" height="260" rx="14" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+  <text x="170" y="200" text-anchor="middle" font-size="28" font-weight="600" fill="#1e3a8a">ESP32</text>
+  <text x="170" y="230" text-anchor="middle" font-size="17" fill="#475569">1-Wire Master</text>
+  <text x="290" y="290" font-size="17" text-anchor="end" fill="#1e3a8a">3V3 </text>
+  <text x="290" y="340" font-size="17" text-anchor="end" fill="#1e3a8a">GPIO4 </text>
+  <text x="290" y="390" font-size="17" text-anchor="end" fill="#1e3a8a">GND </text>
+
+  <!-- rails -->
+  <line x1="290" y1="283" x2="1540" y2="283" stroke="#dc2626" stroke-width="3"/>
+  <text x="1545" y="289" font-size="16" fill="#dc2626">VDD</text>
+  <line x1="290" y1="333" x2="1540" y2="333" stroke="#2563eb" stroke-width="3"/>
+  <text x="1545" y="339" font-size="16" fill="#2563eb">DQ</text>
+  <line x1="290" y1="383" x2="1540" y2="383" stroke="#1f2937" stroke-width="3"/>
+  <text x="1545" y="389" font-size="16" fill="#1f2937">GND</text>
+
+  <!-- pull-up -->
+  <rect x="330" y="292" width="22" height="34" fill="#ffffff" stroke="#475569" stroke-width="2"/>
+  <line x1="341" y1="283" x2="341" y2="292" stroke="#475569" stroke-width="2"/>
+  <line x1="341" y1="326" x2="341" y2="333" stroke="#475569" stroke-width="2"/>
+  <text x="365" y="315" font-size="16" fill="#475569">4.7 k (pull-up)</text>
+
+  <!-- sensors -->
+  <g font-size="16">
+    <!-- template repeated 9 times at x0 = 470 + i*115 -->
+    <g transform="translate(470,0)">
+      <line x1="40" y1="283" x2="40" y2="440" stroke="#dc2626" stroke-width="1.5"/>
+      <line x1="55" y1="333" x2="55" y2="440" stroke="#2563eb" stroke-width="1.5"/>
+      <line x1="70" y1="383" x2="70" y2="440" stroke="#1f2937" stroke-width="1.5"/>
+      <rect x="10" y="440" width="90" height="70" rx="8" fill="#f0fdf4" stroke="#16a34a" stroke-width="1.5"/>
+      <text x="55" y="468" text-anchor="middle" font-weight="600" fill="#14532d">DS18B20</text>
+      <text x="55" y="494" text-anchor="middle" fill="#166534">T1</text>
+      <text x="55" y="540" text-anchor="middle" font-size="12" fill="#6b7280" font-family="Consolas, monospace">28-FF-64-1E-..</text>
+    </g>
+    <g transform="translate(585,0)">
+      <line x1="40" y1="283" x2="40" y2="440" stroke="#dc2626" stroke-width="1.5"/>
+      <line x1="55" y1="333" x2="55" y2="440" stroke="#2563eb" stroke-width="1.5"/>
+      <line x1="70" y1="383" x2="70" y2="440" stroke="#1f2937" stroke-width="1.5"/>
+      <rect x="10" y="440" width="90" height="70" rx="8" fill="#f0fdf4" stroke="#16a34a" stroke-width="1.5"/>
+      <text x="55" y="468" text-anchor="middle" font-weight="600" fill="#14532d">DS18B20</text>
+      <text x="55" y="494" text-anchor="middle" fill="#166534">T2</text>
+      <text x="55" y="540" text-anchor="middle" font-size="12" fill="#6b7280" font-family="Consolas, monospace">28-A2-07-9C-..</text>
+    </g>
+    <g transform="translate(700,0)">
+      <line x1="40" y1="283" x2="40" y2="440" stroke="#dc2626" stroke-width="1.5"/>
+      <line x1="55" y1="333" x2="55" y2="440" stroke="#2563eb" stroke-width="1.5"/>
+      <line x1="70" y1="383" x2="70" y2="440" stroke="#1f2937" stroke-width="1.5"/>
+      <rect x="10" y="440" width="90" height="70" rx="8" fill="#f0fdf4" stroke="#16a34a" stroke-width="1.5"/>
+      <text x="55" y="468" text-anchor="middle" font-weight="600" fill="#14532d">DS18B20</text>
+      <text x="55" y="494" text-anchor="middle" fill="#166534">T3</text>
+      <text x="55" y="540" text-anchor="middle" font-size="12" fill="#6b7280" font-family="Consolas, monospace">28-3B-11-F0-..</text>
+    </g>
+    <g transform="translate(815,0)">
+      <line x1="40" y1="283" x2="40" y2="440" stroke="#dc2626" stroke-width="1.5"/>
+      <line x1="55" y1="333" x2="55" y2="440" stroke="#2563eb" stroke-width="1.5"/>
+      <line x1="70" y1="383" x2="70" y2="440" stroke="#1f2937" stroke-width="1.5"/>
+      <rect x="10" y="440" width="90" height="70" rx="8" fill="#f0fdf4" stroke="#16a34a" stroke-width="1.5"/>
+      <text x="55" y="468" text-anchor="middle" font-weight="600" fill="#14532d">DS18B20</text>
+      <text x="55" y="494" text-anchor="middle" fill="#166534">T4</text>
+      <text x="55" y="540" text-anchor="middle" font-size="12" fill="#6b7280" font-family="Consolas, monospace">28-C9-5D-21-..</text>
+    </g>
+    <g transform="translate(930,0)">
+      <line x1="40" y1="283" x2="40" y2="440" stroke="#dc2626" stroke-width="1.5"/>
+      <line x1="55" y1="333" x2="55" y2="440" stroke="#2563eb" stroke-width="1.5"/>
+      <line x1="70" y1="383" x2="70" y2="440" stroke="#1f2937" stroke-width="1.5"/>
+      <rect x="10" y="440" width="90" height="70" rx="8" fill="#f0fdf4" stroke="#16a34a" stroke-width="1.5"/>
+      <text x="55" y="468" text-anchor="middle" font-weight="600" fill="#14532d">DS18B20</text>
+      <text x="55" y="494" text-anchor="middle" fill="#166534">T5</text>
+      <text x="55" y="540" text-anchor="middle" font-size="12" fill="#6b7280" font-family="Consolas, monospace">28-0E-88-4A-..</text>
+    </g>
+    <g transform="translate(1045,0)">
+      <line x1="40" y1="283" x2="40" y2="440" stroke="#dc2626" stroke-width="1.5"/>
+      <line x1="55" y1="333" x2="55" y2="440" stroke="#2563eb" stroke-width="1.5"/>
+      <line x1="70" y1="383" x2="70" y2="440" stroke="#1f2937" stroke-width="1.5"/>
+      <rect x="10" y="440" width="90" height="70" rx="8" fill="#f0fdf4" stroke="#16a34a" stroke-width="1.5"/>
+      <text x="55" y="468" text-anchor="middle" font-weight="600" fill="#14532d">DS18B20</text>
+      <text x="55" y="494" text-anchor="middle" fill="#166534">T6</text>
+      <text x="55" y="540" text-anchor="middle" font-size="12" fill="#6b7280" font-family="Consolas, monospace">28-77-AB-03-..</text>
+    </g>
+    <g transform="translate(1160,0)">
+      <line x1="40" y1="283" x2="40" y2="440" stroke="#dc2626" stroke-width="1.5"/>
+      <line x1="55" y1="333" x2="55" y2="440" stroke="#2563eb" stroke-width="1.5"/>
+      <line x1="70" y1="383" x2="70" y2="440" stroke="#1f2937" stroke-width="1.5"/>
+      <rect x="10" y="440" width="90" height="70" rx="8" fill="#f0fdf4" stroke="#16a34a" stroke-width="1.5"/>
+      <text x="55" y="468" text-anchor="middle" font-weight="600" fill="#14532d">DS18B20</text>
+      <text x="55" y="494" text-anchor="middle" fill="#166534">T7</text>
+      <text x="55" y="540" text-anchor="middle" font-size="12" fill="#6b7280" font-family="Consolas, monospace">28-D4-2F-6B-..</text>
+    </g>
+    <g transform="translate(1275,0)">
+      <line x1="40" y1="283" x2="40" y2="440" stroke="#dc2626" stroke-width="1.5"/>
+      <line x1="55" y1="333" x2="55" y2="440" stroke="#2563eb" stroke-width="1.5"/>
+      <line x1="70" y1="383" x2="70" y2="440" stroke="#1f2937" stroke-width="1.5"/>
+      <rect x="10" y="440" width="90" height="70" rx="8" fill="#f0fdf4" stroke="#16a34a" stroke-width="1.5"/>
+      <text x="55" y="468" text-anchor="middle" font-weight="600" fill="#14532d">DS18B20</text>
+      <text x="55" y="494" text-anchor="middle" fill="#166534">T8</text>
+      <text x="55" y="540" text-anchor="middle" font-size="12" fill="#6b7280" font-family="Consolas, monospace">28-19-C0-E7-..</text>
+    </g>
+    <g transform="translate(1390,0)">
+      <line x1="40" y1="283" x2="40" y2="440" stroke="#dc2626" stroke-width="1.5"/>
+      <line x1="55" y1="333" x2="55" y2="440" stroke="#2563eb" stroke-width="1.5"/>
+      <line x1="70" y1="383" x2="70" y2="440" stroke="#1f2937" stroke-width="1.5"/>
+      <rect x="10" y="440" width="90" height="70" rx="8" fill="#f0fdf4" stroke="#16a34a" stroke-width="1.5"/>
+      <text x="55" y="468" text-anchor="middle" font-weight="600" fill="#14532d">DS18B20</text>
+      <text x="55" y="494" text-anchor="middle" fill="#166534">T9</text>
+      <text x="55" y="540" text-anchor="middle" font-size="12" fill="#6b7280" font-family="Consolas, monospace">28-5C-93-18-..</text>
+    </g>
+  </g>
+
+  <text x="800" y="590" text-anchor="middle" font-size="18" fill="#475569">เซนเซอร์ทุกตัวต่อขนานบนสายสัญญาณ DQ เส้นเดียว แยกกันด้วยหมายเลข ROM 64 บิตที่ไม่ซ้ำกัน (ตัวอย่างค่า)</text>
+  <text x="800" y="618" text-anchor="middle" font-size="17" fill="#6b7280">เฟิร์มแวร์จับคู่ ROM กับตำแหน่ง T1..T9 แล้วเก็บไว้ใน NVS จึงเปลี่ยนเซนเซอร์เสียได้โดยตำแหน่งข้อมูลไม่เปลี่ยน</text>
+
+  <text x="800" y="80" text-anchor="middle" font-size="20" fill="#6b7280">บัส 1-Wire: ESP32 เป็น Master, DS18B20 ทั้ง 9 ตัวเป็น Slave</text>
+</svg>

@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="700" viewBox="0 0 1600 700" font-family="Leelawadee UI, Segoe UI, Tahoma, sans-serif" font-size="22" fill="#1f2937">
+  <defs>
+    <marker id="arb" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#2563eb"/></marker>
+    <marker id="aro" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#ea580c"/></marker>
+  </defs>
+  <rect width="1600" height="700" fill="#ffffff"/>
+
+  <text x="250" y="70" text-anchor="middle" font-size="20" fill="#6b7280">Publisher (อุปกรณ์)</text>
+  <text x="800" y="70" text-anchor="middle" font-size="20" fill="#6b7280">Broker (ตัวกลาง)</text>
+  <text x="1350" y="70" text-anchor="middle" font-size="20" fill="#6b7280">Subscriber (ผู้ใช้ข้อมูล)</text>
+
+  <!-- device -->
+  <rect x="100" y="230" width="300" height="240" rx="14" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+  <text x="250" y="275" text-anchor="middle" font-size="26" font-weight="600" fill="#1e3a8a">ESP32</text>
+  <text x="250" y="305" text-anchor="middle" font-size="17" fill="#475569">PubSubClient, Keep Alive 30 s</text>
+  <text x="250" y="350" text-anchor="middle" font-size="17">V, I, P, Hz, kWh</text>
+  <text x="250" y="378" text-anchor="middle" font-size="17">temp1 .. temp9</text>
+  <text x="250" y="406" text-anchor="middle" font-size="17">fw_title, fw_version</text>
+  <text x="250" y="445" text-anchor="middle" font-size="16" fill="#6b7280">Token ของอุปกรณ์ = Username</text>
+
+  <!-- broker -->
+  <rect x="600" y="180" width="400" height="340" rx="14" fill="#f8fafc" stroke="#94a3b8" stroke-width="2"/>
+  <text x="800" y="225" text-anchor="middle" font-size="26" font-weight="600">MQTT Broker</text>
+  <text x="800" y="253" text-anchor="middle" font-size="17" fill="#475569">ThingsBoard, พอร์ต 1883</text>
+  <rect x="630" y="285" width="340" height="52" rx="8" fill="#ffffff" stroke="#cbd5e1"/>
+  <text x="800" y="317" text-anchor="middle" font-size="16" font-family="Consolas, monospace">v1/devices/me/telemetry</text>
+  <rect x="630" y="350" width="340" height="52" rx="8" fill="#ffffff" stroke="#cbd5e1"/>
+  <text x="800" y="382" text-anchor="middle" font-size="16" font-family="Consolas, monospace">v1/devices/me/attributes</text>
+  <rect x="630" y="415" width="340" height="52" rx="8" fill="#fff7ed" stroke="#fdba74"/>
+  <text x="800" y="447" text-anchor="middle" font-size="16" font-family="Consolas, monospace">v1/devices/me/rpc/request/+</text>
+  <text x="800" y="500" text-anchor="middle" font-size="16" fill="#6b7280">หัวข้อ (Topic) = ช่องทางจับคู่ผู้ส่งกับผู้รับ</text>
+
+  <!-- publish arrows -->
+  <path d="M400 311 H630" stroke="#2563eb" stroke-width="2.5" marker-end="url(#arb)"/>
+  <text x="515" y="298" text-anchor="middle" font-size="17" fill="#1e3a8a">Publish ค่าวัด</text>
+  <path d="M400 376 H630" stroke="#2563eb" stroke-width="2.5" marker-end="url(#arb)"/>
+  <text x="515" y="363" text-anchor="middle" font-size="17" fill="#1e3a8a">Publish เวอร์ชันเฟิร์มแวร์</text>
+  <path d="M630 441 H400" stroke="#ea580c" stroke-width="2.5" marker-end="url(#aro)"/>
+  <text x="515" y="428" text-anchor="middle" font-size="17" fill="#9a3412">Subscribe รับคำสั่ง</text>
+  <text x="515" y="470" text-anchor="middle" font-size="15" fill="#6b7280">เช่น สั่งอัปเดตเฟิร์มแวร์, รีบูต</text>
+
+  <!-- subscribers -->
+  <rect x="1200" y="150" width="300" height="110" rx="12" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"/>
+  <text x="1350" y="193" text-anchor="middle" font-weight="600">แดชบอร์ด</text>
+  <text x="1350" y="223" text-anchor="middle" font-size="16" fill="#6b7280">กราฟ, แผนที่ความร้อน, ค่าล่าสุด</text>
+
+  <rect x="1200" y="295" width="300" height="110" rx="12" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"/>
+  <text x="1350" y="338" text-anchor="middle" font-weight="600">ฐานข้อมูล Telemetry</text>
+  <text x="1350" y="368" text-anchor="middle" font-size="16" fill="#6b7280">เก็บประวัติพร้อมเวลา</text>
+
+  <rect x="1200" y="440" width="300" height="110" rx="12" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"/>
+  <text x="1350" y="483" text-anchor="middle" font-weight="600">Rule Engine</text>
+  <text x="1350" y="513" text-anchor="middle" font-size="16" fill="#6b7280">แจ้งเตือนเมื่อค่าเกินเกณฑ์</text>
+
+  <path d="M1000 311 H1100 V205 H1200" stroke="#2563eb" stroke-width="2.5" fill="none" marker-end="url(#arb)"/>
+  <path d="M1000 311 H1100 V350 H1200" stroke="#2563eb" stroke-width="2.5" fill="none" marker-end="url(#arb)"/>
+  <path d="M1000 311 H1100 V495 H1200" stroke="#2563eb" stroke-width="2.5" fill="none" marker-end="url(#arb)"/>
+  <text x="1100" y="600" text-anchor="middle" font-size="16" fill="#6b7280">ข้อความหนึ่งชุด ส่งถึงผู้บอกรับได้หลายราย โดยอุปกรณ์ไม่ต้องรู้จักผู้รับ</text>
+
+  <text x="800" y="660" text-anchor="middle" font-size="17" fill="#475569">ESP32 ส่งตามรอบ Heartbeat 30 วินาที และส่งทันทีเมื่อค่าเปลี่ยนเกิน Deadband (Report by Exception)</text>
+</svg>

@@ -1,0 +1,104 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="860" viewBox="0 0 1600 860" font-family="Leelawadee UI, Segoe UI, Tahoma, sans-serif" font-size="22" fill="#1f2937">
+  <defs>
+    <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#475569"/></marker>
+    <marker id="arb" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#2563eb"/></marker>
+  </defs>
+  <rect width="1600" height="860" fill="#ffffff"/>
+
+  <!-- group labels -->
+  <text x="190" y="52" font-size="20" fill="#6b7280" text-anchor="middle">ส่วนตรวจวัด (Sensing)</text>
+  <text x="800" y="52" font-size="20" fill="#6b7280" text-anchor="middle">หน่วยประมวลผล (Controller)</text>
+  <text x="1380" y="52" font-size="20" fill="#6b7280" text-anchor="middle">ส่วนแสดงผลและแพลตฟอร์ม (Network)</text>
+  <line x1="420" y1="70" x2="420" y2="820" stroke="#e5e7eb" stroke-dasharray="6 8"/>
+  <line x1="1180" y1="70" x2="1180" y2="820" stroke="#e5e7eb" stroke-dasharray="6 8"/>
+
+  <!-- ESP32 -->
+  <rect x="600" y="150" width="400" height="560" rx="18" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+  <text x="800" y="200" font-size="34" font-weight="600" text-anchor="middle" fill="#1e3a8a">ESP32</text>
+  <text x="800" y="232" font-size="19" text-anchor="middle" fill="#475569">Xtensa LX6 2 แกน 240 MHz, Wi-Fi, 4 MB Flash</text>
+
+  <rect x="630" y="265" width="340" height="64" rx="10" fill="#ffffff" stroke="#cbd5e1"/>
+  <text x="800" y="292" text-anchor="middle" font-weight="600">อ่านเซนเซอร์ทุก 1 วินาที</text>
+  <text x="800" y="316" text-anchor="middle" font-size="18" fill="#6b7280">loop() หลัก</text>
+
+  <rect x="630" y="345" width="340" height="64" rx="10" fill="#ffffff" stroke="#cbd5e1"/>
+  <text x="800" y="372" text-anchor="middle" font-weight="600">เว็บเซิร์ฟเวอร์ + SSE</text>
+  <text x="800" y="396" text-anchor="middle" font-size="18" fill="#6b7280">แดชบอร์ด, หน้าตั้งค่า, Wi-Fi portal</text>
+
+  <rect x="630" y="425" width="340" height="64" rx="10" fill="#ffffff" stroke="#cbd5e1"/>
+  <text x="800" y="452" text-anchor="middle" font-weight="600">MQTT Task (FreeRTOS)</text>
+  <text x="800" y="476" text-anchor="middle" font-size="18" fill="#6b7280">Report by Exception, รับคำสั่ง RPC</text>
+
+  <rect x="630" y="505" width="340" height="64" rx="10" fill="#ffffff" stroke="#cbd5e1"/>
+  <text x="800" y="532" text-anchor="middle" font-weight="600">OTA Task</text>
+  <text x="800" y="556" text-anchor="middle" font-size="18" fill="#6b7280">ดาวน์โหลดเฟิร์มแวร์, Rollback</text>
+
+  <rect x="630" y="585" width="340" height="64" rx="10" fill="#ffffff" stroke="#cbd5e1"/>
+  <text x="800" y="612" text-anchor="middle" font-weight="600">NVS (หน่วยความจำถาวร)</text>
+  <text x="800" y="636" text-anchor="middle" font-size="18" fill="#6b7280">Wi-Fi, MQTT, ค่าสอบเทียบ, kWh, slot map</text>
+
+  <text x="800" y="690" text-anchor="middle" font-size="18" fill="#6b7280">LED สถานะ GPIO2   |   ปุ่ม BOOT GPIO0 (กดค้าง 10 วิ = Factory Reset)</text>
+
+  <!-- BL0942 -->
+  <rect x="60" y="130" width="300" height="190" rx="14" fill="#fff7ed" stroke="#ea580c" stroke-width="2"/>
+  <text x="210" y="168" font-size="26" font-weight="600" text-anchor="middle" fill="#9a3412">BL0942</text>
+  <text x="210" y="196" font-size="18" text-anchor="middle" fill="#475569">IC วัดพลังงานไฟฟ้า 1 เฟส</text>
+  <text x="210" y="232" font-size="18" text-anchor="middle">V, I, P, Hz, kWh</text>
+  <text x="210" y="262" font-size="17" text-anchor="middle" fill="#6b7280">ZMPT107 (แรงดัน)</text>
+  <text x="210" y="288" font-size="17" text-anchor="middle" fill="#6b7280">CT 2000:1 + Burden (กระแส)</text>
+
+  <path d="M360 225 H600" stroke="#475569" stroke-width="2" marker-end="url(#ar)" marker-start="url(#ar)"/>
+  <text x="480" y="212" text-anchor="middle" font-size="18">UART2 4800 bps</text>
+  <text x="480" y="252" text-anchor="middle" font-size="16" fill="#6b7280">GPIO16 RX / GPIO17 TX</text>
+
+  <!-- DS18B20 -->
+  <rect x="60" y="400" width="300" height="300" rx="14" fill="#f0fdf4" stroke="#16a34a" stroke-width="2"/>
+  <text x="210" y="438" font-size="26" font-weight="600" text-anchor="middle" fill="#14532d">DS18B20 x 9</text>
+  <text x="210" y="466" font-size="18" text-anchor="middle" fill="#475569">เซนเซอร์อุณหภูมิดิจิทัล</text>
+  <g font-size="16" fill="#14532d">
+    <rect x="90" y="490" width="70" height="40" rx="6" fill="#ffffff" stroke="#86efac"/><text x="125" y="516" text-anchor="middle">T1</text>
+    <rect x="175" y="490" width="70" height="40" rx="6" fill="#ffffff" stroke="#86efac"/><text x="210" y="516" text-anchor="middle">T2</text>
+    <rect x="260" y="490" width="70" height="40" rx="6" fill="#ffffff" stroke="#86efac"/><text x="295" y="516" text-anchor="middle">T3</text>
+    <rect x="90" y="545" width="70" height="40" rx="6" fill="#ffffff" stroke="#86efac"/><text x="125" y="571" text-anchor="middle">T4</text>
+    <rect x="175" y="545" width="70" height="40" rx="6" fill="#ffffff" stroke="#86efac"/><text x="210" y="571" text-anchor="middle">T5</text>
+    <rect x="260" y="545" width="70" height="40" rx="6" fill="#ffffff" stroke="#86efac"/><text x="295" y="571" text-anchor="middle">T6</text>
+    <rect x="90" y="600" width="70" height="40" rx="6" fill="#ffffff" stroke="#86efac"/><text x="125" y="626" text-anchor="middle">T7</text>
+    <rect x="175" y="600" width="70" height="40" rx="6" fill="#ffffff" stroke="#86efac"/><text x="210" y="626" text-anchor="middle">T8</text>
+    <rect x="260" y="600" width="70" height="40" rx="6" fill="#ffffff" stroke="#86efac"/><text x="295" y="626" text-anchor="middle">T9</text>
+  </g>
+  <text x="210" y="675" font-size="17" text-anchor="middle" fill="#6b7280">ความละเอียด 12 บิต (0.0625 C)</text>
+
+  <path d="M360 550 H600" stroke="#475569" stroke-width="2" marker-end="url(#ar)" marker-start="url(#ar)"/>
+  <text x="480" y="537" text-anchor="middle" font-size="18">1-Wire บัสเดียว</text>
+  <text x="480" y="577" text-anchor="middle" font-size="16" fill="#6b7280">GPIO4</text>
+
+  <!-- Wi-Fi arrows -->
+  <path d="M1000 300 H1240" stroke="#2563eb" stroke-width="2" marker-end="url(#arb)" marker-start="url(#arb)"/>
+  <text x="1120" y="287" text-anchor="middle" font-size="18" fill="#1e3a8a">HTTP / SSE</text>
+  <text x="1120" y="327" text-anchor="middle" font-size="16" fill="#6b7280">Wi-Fi LAN</text>
+
+  <path d="M1000 520 H1240" stroke="#2563eb" stroke-width="2" marker-end="url(#arb)" marker-start="url(#arb)"/>
+  <text x="1120" y="507" text-anchor="middle" font-size="18" fill="#1e3a8a">MQTT</text>
+  <text x="1120" y="547" text-anchor="middle" font-size="16" fill="#6b7280">Wi-Fi / Internet</text>
+
+  <!-- Browser -->
+  <rect x="1240" y="220" width="300" height="160" rx="14" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"/>
+  <rect x="1240" y="220" width="300" height="34" rx="14" fill="#f1f5f9"/>
+  <circle cx="1262" cy="237" r="6" fill="#cbd5e1"/><circle cx="1282" cy="237" r="6" fill="#cbd5e1"/><circle cx="1302" cy="237" r="6" fill="#cbd5e1"/>
+  <text x="1390" y="292" font-size="24" font-weight="600" text-anchor="middle">เว็บเบราว์เซอร์</text>
+  <text x="1390" y="322" font-size="18" text-anchor="middle" fill="#475569">โทรศัพท์ / คอมพิวเตอร์</text>
+  <text x="1390" y="350" font-size="17" text-anchor="middle" fill="#6b7280">แดชบอร์ดเรียลไทม์, ตั้งค่า, อัปเดตเฟิร์มแวร์</text>
+
+  <!-- ThingsBoard -->
+  <rect x="1240" y="440" width="300" height="190" rx="14" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"/>
+  <text x="1390" y="485" font-size="24" font-weight="600" text-anchor="middle">ThingsBoard</text>
+  <text x="1390" y="513" font-size="18" text-anchor="middle" fill="#475569">แพลตฟอร์ม IoT</text>
+  <text x="1390" y="548" font-size="17" text-anchor="middle" fill="#6b7280">เก็บประวัติ Telemetry</text>
+  <text x="1390" y="575" font-size="17" text-anchor="middle" fill="#6b7280">แดชบอร์ด + แผนที่ความร้อน</text>
+  <text x="1390" y="602" font-size="17" text-anchor="middle" fill="#6b7280">แจ้งเตือน, จัดการเฟิร์มแวร์ OTA</text>
+
+  <!-- Mains -->
+  <rect x="60" y="740" width="300" height="60" rx="10" fill="#fef2f2" stroke="#dc2626" stroke-dasharray="6 6"/>
+  <text x="210" y="777" text-anchor="middle" font-size="18" fill="#991b1b">ไฟฟ้ากระแสสลับ 220 V 50 Hz (โหลดที่วัด)</text>
+  <path d="M60 770 H28 V225 H60" fill="none" stroke="#dc2626" stroke-width="2" stroke-dasharray="6 6"/>
+</svg>

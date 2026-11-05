@@ -1,0 +1,490 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<title>Chapter 3 Figures</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #ffffff; color: #0f172a; font-family: "IBM Plex Sans Thai", sans-serif; }
+  .fig { width: 1600px; background: #ffffff; padding: 48px 56px 56px; margin-bottom: 40px; }
+  .head { margin-bottom: 32px; }
+  .eyebrow { font-size: 18px; font-weight: 600; color: #1d4ed8; }
+  .title { font-size: 34px; font-weight: 600; margin-top: 4px; }
+  .sub { font-size: 20px; color: #64748b; margin-top: 6px; }
+  .canvas { position: relative; width: 1488px; }
+  .canvas > svg { position: absolute; left: 0; top: 0; }
+  .nd { position: absolute; display: flex; align-items: center; justify-content: center; text-align: center;
+        border: 1.5px solid #cbd5e1; background: #ffffff; border-radius: 12px; font-size: 18px; line-height: 1.45; padding: 0 18px; }
+  .term { border-radius: 999px; background: #0f172a; color: #ffffff; border-color: #0f172a; font-weight: 600; }
+  .dec { position: absolute; }
+  .dec .t { position: absolute; left: 0; top: 0; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;
+            text-align: center; font-size: 17px; font-weight: 600; line-height: 1.4; padding: 0 70px; color: #92400e; }
+  .lbl { position: absolute; font-size: 16px; font-weight: 600; }
+  .yes { color: #15803d; } .no { color: #b91c1c; }
+  .side { background: #fef2f2; border-color: #fecaca; color: #991b1b; }
+  .blue { background: #eff6ff; border-color: #bfdbfe; }
+  .green { background: #f0fdf4; border-color: #bbf7d0; }
+  .violet { background: #f5f3ff; border-color: #ddd6fe; }
+  .orange { background: #fff7ed; border-color: #fed7aa; }
+  .card { border: 1.5px solid #e2e8f0; border-radius: 18px; background: #ffffff; padding: 22px 24px; }
+  .card h3 { font-size: 22px; font-weight: 600; }
+  .muted { color: #64748b; }
+  .note { font-size: 18px; color: #64748b; line-height: 1.6; }
+  .pill { display: inline-block; font-size: 16px; font-weight: 600; padding: 6px 14px; border-radius: 999px; }
+  .num { width: 44px; height: 44px; border-radius: 999px; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 600; }
+  .mono { font-family: "IBM Plex Mono", monospace; }
+  .legend { position: absolute; left: 0; top: 0; width: 250px; }
+  .legend .row { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; font-size: 16px; color: #475569; }
+</style>
+</head>
+<body>
+
+<!-- ================= 3.1 TIMELINE ================= -->
+<div class="fig" id="f31">
+  <div class="head">
+    <div class="eyebrow">ขั้นตอนการดำเนินงาน</div>
+    <div class="title">ลำดับการพัฒนาระบบระหว่างปฏิบัติงานสหกิจศึกษา</div>
+    <div class="sub">พัฒนาทีละส่วน เริ่มจากอ่านเซนเซอร์ให้ได้ แล้วจึงเพิ่มการเชื่อมต่อ ความสะดวก และความทนทาน (พ.ศ. 2569)</div>
+  </div>
+  <div class="canvas" style="height:620px;">
+    <svg width="1488" height="620" viewBox="0 0 1488 620">
+      <line x1="0" y1="310" x2="1488" y2="310" stroke="#cbd5e1" stroke-width="4"/>
+      <g stroke-width="2" stroke-dasharray="4 5">
+        <line x1="40" y1="250" x2="40" y2="296" stroke="#93c5fd"/>
+        <line x1="210" y1="324" x2="210" y2="370" stroke="#93c5fd"/>
+        <line x1="380" y1="250" x2="380" y2="296" stroke="#c4b5fd"/>
+        <line x1="550" y1="324" x2="550" y2="370" stroke="#c4b5fd"/>
+        <line x1="720" y1="250" x2="720" y2="296" stroke="#c4b5fd"/>
+        <line x1="890" y1="324" x2="890" y2="370" stroke="#86efac"/>
+        <line x1="1060" y1="250" x2="1060" y2="296" stroke="#86efac"/>
+        <line x1="1230" y1="324" x2="1230" y2="370" stroke="#86efac"/>
+      </g>
+      <circle cx="40" cy="310" r="12" fill="#2563eb"/><circle cx="210" cy="310" r="12" fill="#2563eb"/>
+      <circle cx="380" cy="310" r="12" fill="#7c3aed"/><circle cx="550" cy="310" r="12" fill="#7c3aed"/><circle cx="720" cy="310" r="12" fill="#7c3aed"/>
+      <circle cx="890" cy="310" r="12" fill="#16a34a"/><circle cx="1060" cy="310" r="12" fill="#16a34a"/><circle cx="1230" cy="310" r="12" fill="#16a34a"/>
+    </svg>
+    <div class="card blue" style="position:absolute; left:20px; top:40px; width:300px; height:210px;"><div class="pill" style="background:#fff; color:#1d4ed8;">13 ส.ค.</div><h3 style="margin-top:12px;">วัดค่าและแดชบอร์ด</h3><div class="note" style="margin-top:6px;">อ่าน BL0942, DS18B20 แสดงผลบนเว็บ และแผนที่ความร้อน</div></div>
+    <div class="card blue" style="position:absolute; left:190px; top:370px; width:290px; height:210px;"><div class="pill" style="background:#fff; color:#1d4ed8;">14 ส.ค.</div><h3 style="margin-top:12px;">หน้าตั้งค่าผ่านเว็บ</h3><div class="note" style="margin-top:6px;">ตั้งค่า Wi-Fi จากโทรศัพท์ หน้าตั้งค่า และเลขเวอร์ชัน</div></div>
+    <div class="card violet" style="position:absolute; left:360px; top:40px; width:300px; height:210px;"><div class="pill" style="background:#fff; color:#6d28d9;">17 ส.ค.</div><h3 style="margin-top:12px;">MQTT และ OTA</h3><div class="note" style="margin-top:6px;">ส่งข้อมูลขึ้นแพลตฟอร์ม ปรับตารางพาร์ติชัน รองรับอัปเดตผ่านเครือข่าย</div></div>
+    <div class="card violet" style="position:absolute; left:530px; top:370px; width:290px; height:210px;"><div class="pill" style="background:#fff; color:#6d28d9;">26 ส.ค.</div><h3 style="margin-top:12px;">OTA ผ่าน ThingsBoard</h3><div class="note" style="margin-top:6px;">ย้ายการอัปเดตไปสั่งจากแพลตฟอร์มเท่านั้น เพื่อความปลอดภัย</div></div>
+    <div class="card violet" style="position:absolute; left:700px; top:40px; width:300px; height:210px;"><div class="pill" style="background:#fff; color:#6d28d9;">27 ส.ค.</div><h3 style="margin-top:12px;">แม่แบบแดชบอร์ด</h3><div class="note" style="margin-top:6px;">สร้างแดชบอร์ดและ Widget แผนที่ความร้อนบน ThingsBoard</div></div>
+    <div class="card green" style="position:absolute; left:870px; top:370px; width:290px; height:210px;"><div class="pill" style="background:#fff; color:#15803d;">10 ก.ย.</div><h3 style="margin-top:12px;">เปลี่ยนเซนเซอร์ได้</h3><div class="note" style="margin-top:6px;">สแกนหาเซนเซอร์ใหม่ และย้ายเข้าตำแหน่งของตัวที่เสีย</div></div>
+    <div class="card green" style="position:absolute; left:1040px; top:40px; width:300px; height:210px;"><div class="pill" style="background:#fff; color:#15803d;">23 ก.ย.</div><h3 style="margin-top:12px;">ปรับปรุงและคู่มือ</h3><div class="note" style="margin-top:6px;">ปรับรายละเอียดทั้งระบบ และจัดทำคู่มือการตั้งค่าภาษาไทย</div></div>
+    <div class="card green" style="position:absolute; left:1188px; top:370px; width:300px; height:210px;"><div class="pill" style="background:#fff; color:#15803d;">6 ต.ค.</div><h3 style="margin-top:12px;">Factory Reset</h3><div class="note" style="margin-top:6px;">กดปุ่ม BOOT ค้าง 10 วินาที เพื่อล้างค่ากลับเป็นค่าเริ่มต้น</div></div>
+  </div>
+  <div style="display:flex; gap:28px; margin-top:8px;">
+    <span class="pill" style="background:#eff6ff; color:#1d4ed8;">ระยะที่ 1 วัดค่าและแสดงผล</span>
+    <span class="pill" style="background:#f5f3ff; color:#6d28d9;">ระยะที่ 2 เชื่อมต่อแพลตฟอร์ม IoT</span>
+    <span class="pill" style="background:#f0fdf4; color:#15803d;">ระยะที่ 3 ความทนทานและการดูแลรักษา</span>
+  </div>
+</div>
+
+<!-- ================= 3.2 SOFTWARE ARCHITECTURE ================= -->
+<div class="fig" id="f32">
+  <div class="head">
+    <div class="eyebrow">การออกแบบซอฟต์แวร์</div>
+    <div class="title">โครงสร้างเฟิร์มแวร์แบ่งเป็นชั้น</div>
+    <div class="sub">แต่ละชั้นใช้งานเฉพาะชั้นที่อยู่ถัดลงไป ทำให้แก้ไขส่วนหนึ่งได้โดยไม่กระทบส่วนอื่น</div>
+  </div>
+  <div style="display:flex; flex-direction:column; gap:14px;">
+    <div style="display:flex; gap:18px; align-items:stretch;">
+      <div style="width:220px; display:flex; flex-direction:column; justify-content:center;"><div style="font-size:22px; font-weight:600;">ผู้ใช้งาน</div><div class="muted" style="font-size:16px;">ช่องทางเข้าถึง</div></div>
+      <div class="card" style="flex:1; padding:18px 22px;"><h3>หน้าเว็บบนอุปกรณ์</h3><div class="muted" style="font-size:16px;">แดชบอร์ด และหน้าตั้งค่า 5 แท็บ</div></div>
+      <div class="card" style="flex:1; padding:18px 22px;"><h3>ThingsBoard</h3><div class="muted" style="font-size:16px;">ประวัติ แจ้งเตือน สั่งอัปเดต</div></div>
+      <div class="card" style="flex:1; padding:18px 22px;"><h3>Serial Monitor</h3><div class="muted" style="font-size:16px;">ใช้ตรวจสอบระหว่างพัฒนา</div></div>
+    </div>
+    <div style="display:flex; gap:18px; align-items:stretch;">
+      <div style="width:220px; display:flex; flex-direction:column; justify-content:center;"><div style="font-size:22px; font-weight:600;">ส่วนเชื่อมต่อ</div><div class="muted" style="font-size:16px;">Interface</div></div>
+      <div class="card blue" style="flex:1; padding:18px 22px;"><h3 style="color:#1d4ed8;">เว็บเซิร์ฟเวอร์</h3><div class="muted mono" style="font-size:15px;">/ , /settings , /events , /api/*</div></div>
+      <div class="card blue" style="flex:1; padding:18px 22px;"><h3 style="color:#1d4ed8;">MQTT</h3><div class="muted mono" style="font-size:15px;">telemetry , attributes , rpc</div></div>
+      <div class="card blue" style="flex:1; padding:18px 22px;"><h3 style="color:#1d4ed8;">Wi-Fi และหน้าตั้งค่าเครือข่าย</h3><div class="muted" style="font-size:16px;">Captive portal เมื่อยังไม่มีเครือข่าย</div></div>
+    </div>
+    <div style="display:flex; gap:18px; align-items:stretch;">
+      <div style="width:220px; display:flex; flex-direction:column; justify-content:center;"><div style="font-size:22px; font-weight:600;">ส่วนประมวลผล</div><div class="muted" style="font-size:16px;">Application</div></div>
+      <div class="card violet" style="flex:1; padding:18px 22px;"><h3 style="color:#6d28d9;">วงรอบอ่านค่า</h3><div class="muted" style="font-size:16px;">อ่านทุก 1 วินาที สะสม kWh</div><div class="muted mono" style="font-size:14px; margin-top:6px;">main.cpp</div></div>
+      <div class="card violet" style="flex:1; padding:18px 22px;"><h3 style="color:#6d28d9;">จัดการตำแหน่งเซนเซอร์</h3><div class="muted" style="font-size:16px;">ผูก ROM กับ T1 ถึง T9</div><div class="muted mono" style="font-size:14px; margin-top:6px;">main.cpp</div></div>
+      <div class="card violet" style="flex:1; padding:18px 22px;"><h3 style="color:#6d28d9;">Task MQTT</h3><div class="muted" style="font-size:16px;">ตัดสินใจส่ง และรับคำสั่ง</div><div class="muted mono" style="font-size:14px; margin-top:6px;">mqtt.cpp</div></div>
+      <div class="card violet" style="flex:1; padding:18px 22px;"><h3 style="color:#6d28d9;">Task OTA</h3><div class="muted" style="font-size:16px;">ดาวน์โหลด และ Rollback</div><div class="muted mono" style="font-size:14px; margin-top:6px;">ota.cpp</div></div>
+    </div>
+    <div style="display:flex; gap:18px; align-items:stretch;">
+      <div style="width:220px; display:flex; flex-direction:column; justify-content:center;"><div style="font-size:22px; font-weight:600;">ไลบรารี</div><div class="muted" style="font-size:16px;">Driver</div></div>
+      <div class="card orange" style="flex:1; padding:18px 22px;"><h3 style="color:#c2410c;">BL0942</h3><div class="muted" style="font-size:16px;">เขียนขึ้นเอง: โปรโตคอล + สอบเทียบ</div></div>
+      <div class="card orange" style="flex:1; padding:18px 22px;"><h3 style="color:#c2410c;">StatusLED</h3><div class="muted" style="font-size:16px;">เขียนขึ้นเอง: รูปแบบไฟกะพริบ</div></div>
+      <div class="card" style="flex:1; padding:18px 22px;"><h3>OneWire, DallasTemperature</h3><div class="muted" style="font-size:16px;">ไลบรารีภายนอก</div></div>
+      <div class="card" style="flex:1; padding:18px 22px;"><h3>AsyncWebServer, PubSubClient, ArduinoJson</h3><div class="muted" style="font-size:16px;">ไลบรารีภายนอก</div></div>
+    </div>
+    <div style="display:flex; gap:18px; align-items:stretch;">
+      <div style="width:220px; display:flex; flex-direction:column; justify-content:center;"><div style="font-size:22px; font-weight:600;">ฮาร์ดแวร์</div><div class="muted" style="font-size:16px;">Hardware</div></div>
+      <div class="card" style="flex:1; padding:18px 22px; background:#f8fafc;"><h3>ESP32 + Arduino Core + FreeRTOS</h3><div class="muted" style="font-size:16px;">UART2, GPIO4 (1-Wire), GPIO2 (LED), GPIO0 (ปุ่ม BOOT), Flash 4 MB (NVS, app0, app1)</div></div>
+    </div>
+  </div>
+  <div class="card" style="margin-top:22px; padding:16px 22px; background:#f8fafc;"><div class="note"><b style="color:#0f172a;">ค่าตั้งค่ากลางอยู่ที่ไฟล์เดียว</b> ขาสัญญาณ ค่าเกณฑ์ และเลขเวอร์ชันทั้งหมดกำหนดใน <span class="mono">include/config.h</span> ใช้ร่วมกันทั้งเฟิร์มแวร์ทดสอบ (serial_monitor) และเฟิร์มแวร์ใช้งานจริง (web_dashboard)</div></div>
+</div>
+
+<!-- ================= 3.3 BOOT FLOWCHART ================= -->
+<div class="fig" id="f33">
+  <div class="head">
+    <div class="eyebrow">ผังงาน</div>
+    <div class="title">ผังงานการเริ่มทำงานของอุปกรณ์</div>
+    <div class="sub">อุปกรณ์อ่านเซนเซอร์ได้เสมอ แม้ยังไม่มีเครือข่าย Wi-Fi</div>
+  </div>
+  <div class="canvas" style="height:1130px;">
+    <svg width="1488" height="1130" viewBox="0 0 1488 1130">
+      <defs><marker id="a3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10z" fill="#64748b"/></marker></defs>
+      <g stroke="#64748b" stroke-width="2" fill="none">
+        <path d="M620 56 V100"/><path d="M620 164 V200"/><path d="M620 264 V300"/><path d="M620 364 V400"/><path d="M620 464 V500"/>
+        <path d="M620 620 V680"/><path d="M620 800 V860"/><path d="M620 924 V960"/><path d="M620 1024 V1060"/>
+        <path d="M820 560 H1180 V590"/>
+        <path d="M820 740 H980"/>
+        <path d="M1180 790 V892 H820"/>
+      </g><path d="M620.0 100.0 L614.5 89.0 L625.5 89.0 Z" fill="#64748b" stroke="none"/><path d="M620.0 200.0 L614.5 189.0 L625.5 189.0 Z" fill="#64748b" stroke="none"/><path d="M620.0 300.0 L614.5 289.0 L625.5 289.0 Z" fill="#64748b" stroke="none"/><path d="M620.0 400.0 L614.5 389.0 L625.5 389.0 Z" fill="#64748b" stroke="none"/><path d="M620.0 500.0 L614.5 489.0 L625.5 489.0 Z" fill="#64748b" stroke="none"/><path d="M620.0 680.0 L614.5 669.0 L625.5 669.0 Z" fill="#64748b" stroke="none"/><path d="M620.0 860.0 L614.5 849.0 L625.5 849.0 Z" fill="#64748b" stroke="none"/><path d="M620.0 960.0 L614.5 949.0 L625.5 949.0 Z" fill="#64748b" stroke="none"/><path d="M620.0 1060.0 L614.5 1049.0 L625.5 1049.0 Z" fill="#64748b" stroke="none"/><path d="M1180.0 590.0 L1174.5 579.0 L1185.5 579.0 Z" fill="#64748b" stroke="none"/><path d="M980.0 740.0 L969.0 745.5 L969.0 734.5 Z" fill="#64748b" stroke="none"/><path d="M820.0 892.0 L831.0 886.5 L831.0 897.5 Z" fill="#64748b" stroke="none"/>
+      <polygon points="620,500 820,560 620,620 420,560" fill="#fffbeb" stroke="#f59e0b" stroke-width="2"/>
+      <polygon points="620,680 820,740 620,800 420,740" fill="#fffbeb" stroke="#f59e0b" stroke-width="2"/>
+      <rect x="0" y="40" width="44" height="26" rx="13" fill="#0f172a"/>
+      <rect x="0" y="86" width="44" height="26" rx="5" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"/>
+      <polygon points="22,128 44,144 22,160 0,144" fill="#fffbeb" stroke="#f59e0b" stroke-width="1.5"/>
+    </svg>
+    <div class="legend">
+      <div class="row" style="position:absolute; left:56px; top:42px;">จุดเริ่มต้น / สิ้นสุด</div>
+      <div class="row" style="position:absolute; left:56px; top:88px;">การทำงาน</div>
+      <div class="row" style="position:absolute; left:56px; top:134px;">การตัดสินใจ</div>
+    </div>
+    <div class="nd term" style="left:420px; top:0; width:400px; height:56px;">เริ่มต้น (จ่ายไฟ หรือ รีเซ็ต)</div>
+    <div class="nd" style="left:420px; top:100px; width:400px; height:64px;">LED กะพริบเร็ว และเปิดพอร์ต Serial</div>
+    <div class="nd" style="left:420px; top:200px; width:400px; height:64px;">โหลดค่าสอบเทียบ และ kWh จาก NVS</div>
+    <div class="nd orange" style="left:420px; top:300px; width:400px; height:64px;">ตั้งค่า BL0942 ผ่าน UART</div>
+    <div class="nd green" style="left:420px; top:400px; width:400px; height:64px;">สแกน DS18B20 และจับคู่ตำแหน่ง T1 ถึง T9</div>
+    <div class="dec" style="left:420px; top:500px; width:400px; height:120px;"><div class="t">มีเครือข่าย Wi-Fi<br>ที่บันทึกไว้หรือไม่</div></div>
+    <div class="dec" style="left:420px; top:680px; width:400px; height:120px;"><div class="t">เชื่อมต่อสำเร็จ<br>ภายใน 10 วินาทีหรือไม่</div></div>
+    <div class="nd blue" style="left:420px; top:860px; width:400px; height:64px;">ซิงก์เวลา NTP เริ่ม Task MQTT และ OTA</div>
+    <div class="nd blue" style="left:420px; top:960px; width:400px; height:64px;">เปิดเว็บเซิร์ฟเวอร์ และช่อง SSE</div>
+    <div class="nd term" style="left:420px; top:1060px; width:400px; height:56px;">เข้าสู่วงรอบหลัก (รูปที่ 3.4)</div>
+    <div class="nd side" style="left:980px; top:590px; width:400px; height:200px; flex-direction:column; gap:6px;">
+      <div style="font-size:20px; font-weight:600;">เปิดโหมดตั้งค่า Wi-Fi</div>
+      <div>สร้าง AP ชื่อ <b>P1-Setup-XXXX</b><br>ที่อยู่ 192.168.4.1, LED กะพริบช้า</div>
+      <div style="font-size:15px; color:#b91c1c;">ยังลองเชื่อมต่อเครือข่ายเดิมอยู่เบื้องหลัง</div>
+    </div>
+    <div class="lbl no" style="left:836px; top:530px;">ไม่มี</div>
+    <div class="lbl yes" style="left:634px; top:630px;">มี</div>
+    <div class="lbl no" style="left:836px; top:710px;">ไม่สำเร็จ</div>
+    <div class="lbl yes" style="left:634px; top:812px;">สำเร็จ</div>
+    <div class="lbl muted" style="left:900px; top:900px; font-weight:400; font-size:15px;">ทำงานต่อได้ แม้ยังไม่มีเครือข่าย</div>
+  </div>
+</div>
+
+<!-- ================= 3.4 MAIN LOOP FLOWCHART ================= -->
+<div class="fig" id="f34">
+  <div class="head">
+    <div class="eyebrow">ผังงาน</div>
+    <div class="title">ผังงานวงรอบหลัก (ทำซ้ำทุก 1 วินาที)</div>
+    <div class="sub">ทุกขั้นตอนไม่รอเครือข่าย การส่งข้อมูลขึ้นแพลตฟอร์มทำใน Task แยก</div>
+  </div>
+  <div class="canvas" style="height:1130px;">
+    <svg width="1488" height="1130" viewBox="0 0 1488 1130">
+      <defs><marker id="a4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10z" fill="#64748b"/></marker></defs>
+      <g stroke="#64748b" stroke-width="2" fill="none">
+        <path d="M620 56 V100"/><path d="M620 164 V200"/><path d="M620 264 V300"/>
+        <path d="M620 420 V480"/><path d="M620 544 V580"/><path d="M620 700 V760"/>
+        <path d="M620 824 V860"/><path d="M620 924 V960"/><path d="M620 1024 V1060"/>
+        <path d="M420 1092 H330 V28 H420"/>
+        <path d="M820 640 H960"/>
+        <path d="M1150 680 V892 H820"/>
+      </g><path d="M620.0 100.0 L614.5 89.0 L625.5 89.0 Z" fill="#64748b" stroke="none"/><path d="M620.0 200.0 L614.5 189.0 L625.5 189.0 Z" fill="#64748b" stroke="none"/><path d="M620.0 300.0 L614.5 289.0 L625.5 289.0 Z" fill="#64748b" stroke="none"/><path d="M620.0 480.0 L614.5 469.0 L625.5 469.0 Z" fill="#64748b" stroke="none"/><path d="M620.0 580.0 L614.5 569.0 L625.5 569.0 Z" fill="#64748b" stroke="none"/><path d="M620.0 760.0 L614.5 749.0 L625.5 749.0 Z" fill="#64748b" stroke="none"/><path d="M620.0 860.0 L614.5 849.0 L625.5 849.0 Z" fill="#64748b" stroke="none"/><path d="M620.0 960.0 L614.5 949.0 L625.5 949.0 Z" fill="#64748b" stroke="none"/><path d="M620.0 1060.0 L614.5 1049.0 L625.5 1049.0 Z" fill="#64748b" stroke="none"/><path d="M420.0 28.0 L409.0 33.5 L409.0 22.5 Z" fill="#64748b" stroke="none"/><path d="M960.0 640.0 L949.0 645.5 L949.0 634.5 Z" fill="#64748b" stroke="none"/><path d="M820.0 892.0 L831.0 886.5 L831.0 897.5 Z" fill="#64748b" stroke="none"/>
+      <path d="M420 360 H330" stroke="#64748b" stroke-width="2" fill="none"/>
+      <polygon points="620,300 820,360 620,420 420,360" fill="#fffbeb" stroke="#f59e0b" stroke-width="2"/>
+      <polygon points="620,580 820,640 620,700 420,640" fill="#fffbeb" stroke="#f59e0b" stroke-width="2"/>
+    </svg>
+    <div class="nd term" style="left:420px; top:0; width:400px; height:56px;">วงรอบหลัก loop()</div>
+    <div class="nd" style="left:420px; top:100px; width:400px; height:64px;">ตรวจปุ่ม BOOT (Factory Reset)</div>
+    <div class="nd" style="left:420px; top:200px; width:400px; height:64px;">ดูแล LED, DNS หน้าตั้งค่า, งาน OTA</div>
+    <div class="dec" style="left:420px; top:300px; width:400px; height:120px;"><div class="t">ครบ 1 วินาที<br>จากรอบก่อนหรือไม่</div></div>
+    <div class="nd orange" style="left:420px; top:480px; width:400px; height:64px;">อ่านค่าจาก BL0942</div>
+    <div class="dec" style="left:420px; top:580px; width:400px; height:120px;"><div class="t">อ่านสำเร็จ<br>(Checksum ถูกต้อง) หรือไม่</div></div>
+    <div class="nd violet" style="left:420px; top:760px; width:400px; height:64px;">สะสมพลังงาน kWh (บันทึกทุก 60 วินาที)</div>
+    <div class="nd green" style="left:420px; top:860px; width:400px; height:64px;">อ่านอุณหภูมิรอบก่อน แล้วสั่งแปลงรอบใหม่</div>
+    <div class="nd blue" style="left:420px; top:960px; width:400px; height:64px;">ส่งสำเนาค่าให้ Task MQTT</div>
+    <div class="nd blue" style="left:420px; top:1060px; width:400px; height:64px;">ส่งข้อมูลไปหน้าเว็บผ่าน SSE</div>
+    <div class="nd side" style="left:960px; top:600px; width:380px; height:80px;">บันทึกเป็นค่าว่าง (null)<br>LED กะพริบคู่ แจ้งความผิดปกติ</div>
+    <div class="lbl no" style="left:346px; top:330px;">ยังไม่ครบ</div>
+    <div class="lbl yes" style="left:634px; top:432px;">ครบ</div>
+    <div class="lbl no" style="left:836px; top:610px;">ไม่สำเร็จ</div>
+    <div class="lbl yes" style="left:634px; top:712px;">สำเร็จ</div>
+    <div class="card" style="position:absolute; left:960px; top:950px; width:420px; padding:16px 20px; background:#f8fafc;"><div class="note" style="font-size:16px;"><b style="color:#0f172a;">ไม่รอการแปลงค่า 750 ms</b> สั่งแปลงอุณหภูมิไว้ล่วงหน้าหนึ่งรอบ วงรอบจึงไม่หยุดรอ และหน้าตั้งค่ายังตอบสนองได้ตลอด</div></div>
+  </div>
+</div>
+
+<!-- ================= 3.5 MQTT DECISION ================= -->
+<div class="fig" id="f35">
+  <div class="head">
+    <div class="eyebrow">ผังงาน</div>
+    <div class="title">การตัดสินใจส่งข้อมูล MQTT (Report by Exception)</div>
+    <div class="sub">ฝั่งซ้ายตรวจค่าทุกวินาที ฝั่งขวาเป็น Task ที่ตัดสินใจว่าจะส่งเมื่อใด</div>
+  </div>
+  <div class="canvas" style="height:900px;">
+    <svg width="1488" height="900" viewBox="0 0 1488 900">
+      <defs><marker id="a5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10z" fill="#64748b"/></marker></defs>
+      <rect x="0" y="0" width="560" height="900" rx="20" fill="#f8fafc"/>
+      <rect x="640" y="0" width="848" height="900" rx="20" fill="#f8fafc"/>
+      <g stroke="#64748b" stroke-width="2" fill="none">
+        <path d="M280 164 V210"/>
+        <path d="M280 370 V410 H140 V450"/>
+        <path d="M280 410 H420 V450"/>
+        <path d="M1010 164 V200"/>
+        <path d="M1210 270 H1400 V836 H1220"/>
+        <path d="M1010 340 V390"/>
+        <path d="M810 460 H760 V600"/>
+        <path d="M1010 530 V580"/>
+        <path d="M810 650 H760"/>
+        <path d="M1010 720 V800"/>
+      </g><path d="M280.0 210.0 L274.5 199.0 L285.5 199.0 Z" fill="#64748b" stroke="none"/><path d="M140.0 450.0 L134.5 439.0 L145.5 439.0 Z" fill="#64748b" stroke="none"/><path d="M420.0 450.0 L414.5 439.0 L425.5 439.0 Z" fill="#64748b" stroke="none"/><path d="M1010.0 200.0 L1004.5 189.0 L1015.5 189.0 Z" fill="#64748b" stroke="none"/><path d="M1220.0 836.0 L1231.0 830.5 L1231.0 841.5 Z" fill="#64748b" stroke="none"/><path d="M1010.0 390.0 L1004.5 379.0 L1015.5 379.0 Z" fill="#64748b" stroke="none"/><path d="M760.0 600.0 L754.5 589.0 L765.5 589.0 Z" fill="#64748b" stroke="none"/><path d="M1010.0 580.0 L1004.5 569.0 L1015.5 569.0 Z" fill="#64748b" stroke="none"/><path d="M760.0 650.0 L771.0 644.5 L771.0 655.5 Z" fill="#64748b" stroke="none"/><path d="M1010.0 800.0 L1004.5 789.0 L1015.5 789.0 Z" fill="#64748b" stroke="none"/>
+      <path d="M560 500 H640" stroke="#94a3b8" stroke-width="2" stroke-dasharray="6 6" fill="none"/>
+      <polygon points="280,210 490,290 280,370 70,290" fill="#fffbeb" stroke="#f59e0b" stroke-width="2"/>
+      <polygon points="1010,200 1210,270 1010,340 810,270" fill="#fffbeb" stroke="#f59e0b" stroke-width="2"/>
+      <polygon points="1010,390 1210,460 1010,530 810,460" fill="#fffbeb" stroke="#f59e0b" stroke-width="2"/>
+      <polygon points="1010,580 1210,650 1010,720 810,650" fill="#fffbeb" stroke="#f59e0b" stroke-width="2"/>
+    </svg>
+    <div style="position:absolute; left:30px; top:24px;"><span class="pill" style="background:#ffffff; color:#475569; border:1px solid #e2e8f0;">ทุก 1 วินาที (ใน loop)</span></div>
+    <div style="position:absolute; left:670px; top:24px;"><span class="pill" style="background:#ffffff; color:#6d28d9; border:1px solid #ddd6fe;">Task MQTT (ทำงานแยก)</span></div>
+    <div class="nd" style="left:80px; top:100px; width:400px; height:64px;">รับค่าล่าสุดจากวงรอบหลัก</div>
+    <div class="dec" style="left:70px; top:210px; width:420px; height:160px;"><div class="t" style="padding:0 80px; font-size:16px;">อุณหภูมิช่องใดต่างจากค่าที่ส่งล่าสุด ≥ 2 °C หรือกระแสต่าง ≥ 0.5 A</div></div>
+    <div class="nd green" style="left:20px; top:450px; width:240px; height:96px;">เริ่มจับเวลา<br>(ถ้ายังไม่ได้เริ่ม)</div>
+    <div class="nd" style="left:300px; top:450px; width:240px; height:96px;">ยกเลิกการจับเวลา<br>รอรอบปกติ</div>
+    <div class="lbl yes" style="left:150px; top:384px;">ต่าง</div>
+    <div class="lbl no" style="left:380px; top:384px;">ไม่ต่าง</div>
+    <div class="lbl muted" style="left:566px; top:470px; font-weight:400; font-size:14px;">สถานะ</div>
+
+    <div class="nd term" style="left:810px; top:100px; width:400px; height:64px; background:#6d28d9; border-color:#6d28d9;">Task MQTT ตื่นขึ้นมาตรวจ</div>
+    <div class="dec" style="left:810px; top:200px; width:400px; height:140px;"><div class="t">ครบ 30 วินาที<br>นับจากส่งครั้งก่อนหรือไม่</div></div>
+    <div class="dec" style="left:810px; top:390px; width:400px; height:140px;"><div class="t">ค่าเกินเกณฑ์ค้างอยู่<br>ครบ 2 วินาทีหรือไม่</div></div>
+    <div class="dec" style="left:810px; top:580px; width:400px; height:140px;"><div class="t">ห่างจากการส่งครั้งก่อน<br>อย่างน้อย 5 วินาทีหรือไม่</div></div>
+    <div class="nd" style="left:640px; top:600px; width:120px; height:100px; font-size:16px; border-style:dashed;">รอรอบ<br>ถัดไป</div>
+    <div class="nd blue" style="left:800px; top:800px; width:420px; height:72px; font-weight:600;">ส่ง Telemetry และใช้ค่านี้เป็นฐานใหม่</div>
+    <div class="lbl yes" style="left:1230px; top:240px;">ครบ (Heartbeat)</div>
+    <div class="lbl no" style="left:1024px; top:350px;">ยังไม่ครบ</div>
+    <div class="lbl no" style="left:770px; top:430px;">ไม่</div>
+    <div class="lbl yes" style="left:1024px; top:540px;">ใช่</div>
+    <div class="lbl no" style="left:770px; top:620px;">ไม่</div>
+    <div class="lbl yes" style="left:1024px; top:740px;">ใช่</div>
+    <div class="card" style="position:absolute; left:20px; top:600px; width:520px; padding:18px 22px; background:#ffffff;"><div class="note" style="font-size:16px;"><b style="color:#0f172a;">ทำไมต้องจับเวลา 2 วินาที</b><br>สัญญาณรบกวนชั่วขณะ หรือมือไปโดนเซนเซอร์ ค่าจะตกกลับก่อนครบเวลา จึงไม่เกิดการส่งและการแจ้งเตือนผิด</div></div>
+    <div class="card" style="position:absolute; left:20px; top:760px; width:520px; padding:18px 22px; background:#ffffff;"><div class="note" style="font-size:16px;"><b style="color:#0f172a;">ทำไมต้องเว้น 5 วินาที</b><br>ป้องกันการส่งถี่เกินไปเมื่อค่าเปลี่ยนต่อเนื่อง สูงสุดไม่เกิน 12 ข้อความต่อนาที</div></div>
+  </div>
+</div>
+
+<!-- ================= 3.6 WIFI SETUP JOURNEY ================= -->
+<div class="fig" id="f36">
+  <div class="head">
+    <div class="eyebrow">การติดตั้งใช้งาน</div>
+    <div class="title">ขั้นตอนตั้งค่า Wi-Fi ด้วยโทรศัพท์ (ไม่ต้องแก้โปรแกรม)</div>
+    <div class="sub">อุปกรณ์ทุกเครื่องใช้เฟิร์มแวร์เดียวกัน ย้ายไปติดตั้งที่ใดก็ตั้งเครือข่ายใหม่ได้เองหน้างาน</div>
+  </div>
+  <div style="display:flex; align-items:stretch; gap:0;">
+    <div class="card" style="width:256px; height:300px;"><div class="num" style="background:#eff6ff; color:#1d4ed8;">1</div><h3 style="margin-top:16px;">จ่ายไฟให้อุปกรณ์</h3><div class="note" style="margin-top:8px;">ยังไม่มีเครือข่ายที่บันทึกไว้ อุปกรณ์จึงเข้าโหมดตั้งค่าเอง</div><div class="pill" style="background:#fffbeb; color:#b45309; margin-top:14px;">LED กะพริบช้า</div></div>
+    <div style="width:52px; display:flex; align-items:center; justify-content:center;"><svg width="36" height="16" viewBox="0 0 36 16"><line x1="0" y1="8" x2="24" y2="8" stroke="#94a3b8" stroke-width="2.5"/><path d="M36 8 L22 1 L22 15 Z" fill="#94a3b8"/></svg></div>
+    <div class="card" style="width:256px; height:300px;"><div class="num" style="background:#eff6ff; color:#1d4ed8;">2</div><h3 style="margin-top:16px;">เชื่อม Wi-Fi ของอุปกรณ์</h3><div class="note" style="margin-top:8px;">เลือกเครือข่ายชื่อ <b style="color:#0f172a;">P1-Setup-XXXX</b> จากโทรศัพท์ ไม่ต้องใส่รหัสผ่าน</div></div>
+    <div style="width:52px; display:flex; align-items:center; justify-content:center;"><svg width="36" height="16" viewBox="0 0 36 16"><line x1="0" y1="8" x2="24" y2="8" stroke="#94a3b8" stroke-width="2.5"/><path d="M36 8 L22 1 L22 15 Z" fill="#94a3b8"/></svg></div>
+    <div class="card" style="width:256px; height:300px;"><div class="num" style="background:#eff6ff; color:#1d4ed8;">3</div><h3 style="margin-top:16px;">หน้าตั้งค่าเปิดขึ้นเอง</h3><div class="note" style="margin-top:8px;">โทรศัพท์แสดงหน้า "ลงชื่อเข้าใช้เครือข่าย" พร้อมรายการ Wi-Fi ที่สแกนไว้แล้ว</div></div>
+    <div style="width:52px; display:flex; align-items:center; justify-content:center;"><svg width="36" height="16" viewBox="0 0 36 16"><line x1="0" y1="8" x2="24" y2="8" stroke="#94a3b8" stroke-width="2.5"/><path d="M36 8 L22 1 L22 15 Z" fill="#94a3b8"/></svg></div>
+    <div class="card" style="width:256px; height:300px;"><div class="num" style="background:#eff6ff; color:#1d4ed8;">4</div><h3 style="margin-top:16px;">เลือกเครือข่ายและบันทึก</h3><div class="note" style="margin-top:8px;">เลือกเครือข่ายของสถานที่ ใส่รหัสผ่าน แล้วกดบันทึก ค่าเก็บลง NVS</div></div>
+    <div style="width:52px; display:flex; align-items:center; justify-content:center;"><svg width="36" height="16" viewBox="0 0 36 16"><line x1="0" y1="8" x2="24" y2="8" stroke="#94a3b8" stroke-width="2.5"/><path d="M36 8 L22 1 L22 15 Z" fill="#94a3b8"/></svg></div>
+    <div class="card green" style="width:256px; height:300px;"><div class="num" style="background:#ffffff; color:#15803d;">5</div><h3 style="margin-top:16px; color:#15803d;">พร้อมใช้งาน</h3><div class="note" style="margin-top:8px;">อุปกรณ์รีสตาร์ตและเชื่อมต่อเครือข่าย เปิดดูได้ที่ esp32-powermeter.local</div><div class="pill" style="background:#ffffff; color:#15803d; margin-top:14px;">LED ติดค้าง</div></div>
+  </div>
+  <div style="display:flex; gap:24px; margin-top:28px;">
+    <div class="card" style="flex:1; padding:18px 22px; background:#fef2f2; border-color:#fecaca;"><div class="note"><b style="color:#991b1b;">ใส่รหัสผ่านผิด</b> อุปกรณ์กลับเข้าโหมดตั้งค่าเอง ทำขั้นตอนที่ 2 ใหม่ได้ทันที</div></div>
+    <div class="card" style="flex:1; padding:18px 22px; background:#f8fafc;"><div class="note"><b style="color:#0f172a;">เราเตอร์บูตช้ากว่า</b> อุปกรณ์ยังลองเชื่อมต่ออยู่เบื้องหลัง และปิดโหมดตั้งค่าเองเมื่อเชื่อมได้</div></div>
+    <div class="card" style="flex:1; padding:18px 22px; background:#f8fafc;"><div class="note"><b style="color:#0f172a;">ระหว่างตั้งค่า</b> การวัดค่าและการสะสม kWh ยังทำงานตามปกติ</div></div>
+  </div>
+</div>
+
+<!-- ================= 3.7 SENSOR SLOTS ================= -->
+<div class="fig" id="f37">
+  <div class="head">
+    <div class="eyebrow">การจัดการเซนเซอร์</div>
+    <div class="title">ผูกเซนเซอร์กับตำแหน่ง แทนการเรียงตามลำดับบนสาย</div>
+    <div class="sub">ตัวอย่าง: เซนเซอร์ที่ติดตั้งตำแหน่ง "บัสบาร์ L2" เสีย</div>
+  </div>
+  <div style="display:flex; gap:40px;">
+    <div class="card" style="flex:1; padding:28px; background:#fef2f2; border-color:#fecaca;">
+      <div class="pill" style="background:#ffffff; color:#b91c1c;">วิธีทั่วไป: เรียงตามลำดับที่สแกนพบ</div>
+      <div style="display:flex; gap:22px; margin-top:22px;">
+        <div style="flex:1;">
+          <div style="font-size:17px; font-weight:600; margin-bottom:10px;">ก่อนเสีย</div>
+          <div style="display:flex; flex-direction:column; gap:8px;">
+            <div class="card" style="padding:10px 16px; border-radius:12px; font-size:17px;">ช่อง 1 = หม้อแปลง A</div>
+            <div class="card" style="padding:10px 16px; border-radius:12px; font-size:17px;">ช่อง 2 = บัสบาร์ L1</div>
+            <div class="card" style="padding:10px 16px; border-radius:12px; font-size:17px;">ช่อง 3 = บัสบาร์ L2</div>
+            <div class="card" style="padding:10px 16px; border-radius:12px; font-size:17px;">ช่อง 4 = บัสบาร์ L3</div>
+            <div class="card" style="padding:10px 16px; border-radius:12px; font-size:17px;">ช่อง 5 = อากาศในตู้</div>
+          </div>
+        </div>
+        <div style="flex:1;">
+          <div style="font-size:17px; font-weight:600; margin-bottom:10px;">หลังเสีย</div>
+          <div style="display:flex; flex-direction:column; gap:8px;">
+            <div class="card" style="padding:10px 16px; border-radius:12px; font-size:17px;">ช่อง 1 = หม้อแปลง A</div>
+            <div class="card" style="padding:10px 16px; border-radius:12px; font-size:17px;">ช่อง 2 = บัสบาร์ L1</div>
+            <div class="card" style="padding:10px 16px; border-radius:12px; font-size:17px; border-color:#f87171; color:#b91c1c;">ช่อง 3 = <b>บัสบาร์ L3</b> (เลื่อนขึ้นมา)</div>
+            <div class="card" style="padding:10px 16px; border-radius:12px; font-size:17px; border-color:#f87171; color:#b91c1c;">ช่อง 4 = <b>อากาศในตู้</b> (เลื่อนขึ้นมา)</div>
+            <div class="card" style="padding:10px 16px; border-radius:12px; font-size:17px; color:#94a3b8;">ช่อง 5 = ว่าง</div>
+          </div>
+        </div>
+      </div>
+      <div class="note" style="margin-top:20px; color:#991b1b;">ค่าทุกช่องหลังตัวที่เสียสลับที่โดยไม่มีการแจ้ง ประวัติบนแพลตฟอร์มผิดทั้งหมด</div>
+    </div>
+    <div class="card" style="flex:1; padding:28px; background:#f0fdf4; border-color:#bbf7d0;">
+      <div class="pill" style="background:#ffffff; color:#15803d;">วิธีที่ใช้: ผูกหมายเลข ROM กับตำแหน่ง</div>
+      <div style="display:flex; gap:22px; margin-top:22px;">
+        <div style="flex:1;">
+          <div style="font-size:17px; font-weight:600; margin-bottom:10px;">ก่อนเสีย</div>
+          <div style="display:flex; flex-direction:column; gap:8px;">
+            <div class="card" style="padding:10px 16px; border-radius:12px; font-size:17px;">T1 หม้อแปลง A</div>
+            <div class="card" style="padding:10px 16px; border-radius:12px; font-size:17px;">T2 บัสบาร์ L1</div>
+            <div class="card" style="padding:10px 16px; border-radius:12px; font-size:17px;">T3 บัสบาร์ L2</div>
+            <div class="card" style="padding:10px 16px; border-radius:12px; font-size:17px;">T4 บัสบาร์ L3</div>
+            <div class="card" style="padding:10px 16px; border-radius:12px; font-size:17px;">T5 อากาศในตู้</div>
+          </div>
+        </div>
+        <div style="flex:1;">
+          <div style="font-size:17px; font-weight:600; margin-bottom:10px;">หลังเสีย</div>
+          <div style="display:flex; flex-direction:column; gap:8px;">
+            <div class="card" style="padding:10px 16px; border-radius:12px; font-size:17px;">T1 หม้อแปลง A</div>
+            <div class="card" style="padding:10px 16px; border-radius:12px; font-size:17px;">T2 บัสบาร์ L1</div>
+            <div class="card" style="padding:10px 16px; border-radius:12px; font-size:17px; background:#f8fafc; color:#64748b; border-style:dashed;">T3 บัสบาร์ L2 : <b>offline</b></div>
+            <div class="card" style="padding:10px 16px; border-radius:12px; font-size:17px;">T4 บัสบาร์ L3</div>
+            <div class="card" style="padding:10px 16px; border-radius:12px; font-size:17px;">T5 อากาศในตู้</div>
+          </div>
+        </div>
+      </div>
+      <div class="note" style="margin-top:20px; color:#166534;">เฉพาะช่องที่เสียแสดง offline ช่องอื่นอยู่ที่เดิม เมื่อใส่ตัวใหม่ กด "Use" ให้รับตำแหน่ง T3 แทน</div>
+    </div>
+  </div>
+  <div class="card" style="margin-top:24px; padding:16px 22px; background:#f8fafc;"><div class="note"><b style="color:#0f172a;">ระบุตัวเซนเซอร์อย่างไร</b> DS18B20 ไม่มีไฟให้กะพริบ ผู้ติดตั้งใช้นิ้วจับเซนเซอร์ให้อุ่นขึ้น แล้วดูว่าแถวใดในหน้าตั้งค่าอุณหภูมิสูงขึ้น จึงตั้งชื่อแถวนั้น</div></div>
+</div>
+
+<!-- ================= 3.8 WEB SITE MAP ================= -->
+<div class="fig" id="f38">
+  <div class="head">
+    <div class="eyebrow">ส่วนติดต่อผู้ใช้</div>
+    <div class="title">แผนผังหน้าเว็บบนอุปกรณ์</div>
+    <div class="sub">แยกหน้าดูค่า (อ่านอย่างเดียว) ออกจากหน้าตั้งค่า เพื่อไม่ให้ผู้ผ่านไปมากดเปลี่ยนค่าโดยไม่ตั้งใจ</div>
+  </div>
+  <div class="canvas" style="height:640px;">
+    <svg width="1488" height="640" viewBox="0 0 1488 640">
+      <g stroke="#94a3b8" stroke-width="2" fill="none">
+        <path d="M744 96 V130 H300 V170"/><path d="M744 130 H1060 V170"/>
+        <path d="M1060 330 V370 H180 V400"/><path d="M1060 370 H470 V400"/><path d="M1060 370 H760 V400"/><path d="M1060 370 H1050 V400"/><path d="M1060 370 H1340 V400"/>
+      </g>
+    </svg>
+    <div class="nd" style="left:524px; top:0; width:440px; height:96px; flex-direction:column; background:#0f172a; color:#ffffff; border-color:#0f172a;">
+      <div style="font-size:22px; font-weight:600;">เว็บเซิร์ฟเวอร์บน ESP32</div>
+      <div class="mono" style="font-size:15px; color:#cbd5e1;">http://esp32-powermeter.local</div>
+    </div>
+    <div class="nd blue" style="left:80px; top:170px; width:440px; height:160px; flex-direction:column; align-items:flex-start; text-align:left; padding:0 26px;">
+      <div style="font-size:22px; font-weight:600; color:#1d4ed8;">แดชบอร์ด</div>
+      <div class="mono" style="font-size:15px; color:#64748b;">/</div>
+      <div style="margin-top:6px;">กำลังไฟฟ้า แรงดัน กระแส ความถี่ kWh<br>แผนที่ความร้อน 3 × 3 และอุณหภูมิทั้ง 9 จุด</div>
+    </div>
+    <div class="nd violet" style="left:840px; top:170px; width:440px; height:160px; flex-direction:column; align-items:flex-start; text-align:left; padding:0 26px;">
+      <div style="font-size:22px; font-weight:600; color:#6d28d9;">หน้าตั้งค่า</div>
+      <div class="mono" style="font-size:15px; color:#64748b;">/settings  (หรือ /wifi)</div>
+      <div style="margin-top:6px;">แบ่งเป็น 5 แท็บ ตามหน้าที่</div>
+    </div>
+    <div class="card" style="position:absolute; left:60px; top:400px; width:240px; height:150px; padding:16px 18px;"><h3 style="font-size:19px;">Sensors</h3><div class="note" style="font-size:15px; margin-top:4px;">จัดลำดับ ตั้งชื่อ และเปลี่ยนเซนเซอร์</div></div>
+    <div class="card" style="position:absolute; left:350px; top:400px; width:240px; height:150px; padding:16px 18px;"><h3 style="font-size:19px;">Calibration</h3><div class="note" style="font-size:15px; margin-top:4px;">ค่าสอบเทียบ kI kV kP และล้าง kWh</div></div>
+    <div class="card" style="position:absolute; left:640px; top:400px; width:240px; height:150px; padding:16px 18px;"><h3 style="font-size:19px;">MQTT</h3><div class="note" style="font-size:15px; margin-top:4px;">Broker, Token, หัวข้อ, เกณฑ์การส่ง</div></div>
+    <div class="card" style="position:absolute; left:930px; top:400px; width:240px; height:150px; padding:16px 18px;"><h3 style="font-size:19px;">Wi-Fi</h3><div class="note" style="font-size:15px; margin-top:4px;">สแกน เลือกเครือข่าย และลืมเครือข่าย</div></div>
+    <div class="card" style="position:absolute; left:1220px; top:400px; width:240px; height:150px; padding:16px 18px;"><h3 style="font-size:19px;">Firmware</h3><div class="note" style="font-size:15px; margin-top:4px;">เวอร์ชัน ช่องที่บูต และสถานะ Rollback</div></div>
+    <div style="position:absolute; left:60px; top:584px; display:flex; gap:14px; align-items:center;">
+      <span class="pill" style="background:#f1f5f9; color:#334155;">ช่องข้อมูลเบื้องหลัง</span>
+      <span class="mono" style="font-size:16px; color:#475569;">/events</span><span class="note" style="font-size:16px;">ส่งค่าสดทุก 1 วินาที (SSE)</span>
+      <span class="mono" style="font-size:16px; color:#475569; margin-left:18px;">/api/*</span><span class="note" style="font-size:16px;">อ่านและบันทึกค่าตั้งค่า (JSON)</span>
+    </div>
+  </div>
+</div>
+
+<!-- ================= 3.9 LED + FACTORY RESET ================= -->
+<div class="fig" id="f39">
+  <div class="head">
+    <div class="eyebrow">การแจ้งสถานะ</div>
+    <div class="title">ไฟสถานะ LED และการคืนค่าเริ่มต้นด้วยปุ่ม BOOT</div>
+    <div class="sub">ดูสถานะอุปกรณ์ได้จากหน้าตู้ โดยไม่ต้องใช้คอมพิวเตอร์</div>
+  </div>
+  <div style="display:flex; gap:40px; align-items:flex-start;">
+    <div style="width:700px;">
+      <div style="font-size:20px; font-weight:600; margin-bottom:14px;">รูปแบบไฟ LED (GPIO2)</div>
+      <div style="display:flex; flex-direction:column; gap:12px;">
+        <div class="card" style="display:flex; align-items:center; gap:20px; padding:16px 20px;">
+          <svg width="160" height="24" viewBox="0 0 160 24"><g fill="#f59e0b"><circle cx="10" cy="12" r="7"/><circle cx="34" cy="12" r="7"/><circle cx="58" cy="12" r="7"/><circle cx="82" cy="12" r="7"/><circle cx="106" cy="12" r="7"/><circle cx="130" cy="12" r="7"/><circle cx="154" cy="12" r="5"/></g></svg>
+          <div><div style="font-size:19px; font-weight:600;">กะพริบเร็ว (5 ครั้ง/วินาที)</div><div class="note" style="font-size:16px;">กำลังเริ่มทำงาน หรือกำลังเชื่อมต่อ Wi-Fi</div></div>
+        </div>
+        <div class="card" style="display:flex; align-items:center; gap:20px; padding:16px 20px;">
+          <svg width="160" height="24" viewBox="0 0 160 24"><g fill="#f59e0b"><rect x="0" y="5" width="50" height="14" rx="7"/><rect x="100" y="5" width="50" height="14" rx="7"/></g></svg>
+          <div><div style="font-size:19px; font-weight:600;">กะพริบช้า (1 ครั้ง/วินาที)</div><div class="note" style="font-size:16px;">อยู่ในโหมดตั้งค่า รอข้อมูล Wi-Fi</div></div>
+        </div>
+        <div class="card" style="display:flex; align-items:center; gap:20px; padding:16px 20px;">
+          <svg width="160" height="24" viewBox="0 0 160 24"><rect x="0" y="5" width="160" height="14" rx="7" fill="#16a34a"/></svg>
+          <div><div style="font-size:19px; font-weight:600;">ติดค้าง</div><div class="note" style="font-size:16px;">ทำงานปกติ เชื่อมต่อ Wi-Fi แล้ว</div></div>
+        </div>
+        <div class="card" style="display:flex; align-items:center; gap:20px; padding:16px 20px; background:#fef2f2; border-color:#fecaca;">
+          <svg width="160" height="24" viewBox="0 0 160 24"><g fill="#dc2626"><circle cx="10" cy="12" r="7"/><circle cx="30" cy="12" r="7"/><circle cx="90" cy="12" r="7"/><circle cx="110" cy="12" r="7"/></g></svg>
+          <div><div style="font-size:19px; font-weight:600; color:#991b1b;">กะพริบคู่เป็นชุด</div><div class="note" style="font-size:16px;">อ่าน BL0942 ไม่ได้ ตรวจสายสัญญาณ (สำคัญกว่าสถานะ Wi-Fi)</div></div>
+        </div>
+      </div>
+    </div>
+    <div style="flex:1;">
+      <div style="font-size:20px; font-weight:600; margin-bottom:14px;">กดปุ่ม BOOT ค้างเพื่อคืนค่าเริ่มต้น</div>
+      <div class="card" style="padding:26px;">
+        <div style="position:relative; height:150px;">
+          <svg width="680" height="150" viewBox="0 0 680 150" style="position:absolute; left:0; top:0;">
+            <rect x="0" y="60" width="200" height="24" rx="12" fill="#e2e8f0"/>
+            <rect x="200" y="60" width="330" height="24" fill="#fde68a"/>
+            <rect x="530" y="60" width="140" height="24" rx="12" fill="#fecaca"/>
+            <line x1="0" y1="40" x2="0" y2="104" stroke="#334155" stroke-width="2"/>
+            <line x1="200" y1="40" x2="200" y2="104" stroke="#334155" stroke-width="2"/>
+            <line x1="530" y1="40" x2="530" y2="104" stroke="#334155" stroke-width="2"/>
+          </svg>
+          <div style="position:absolute; left:0; top:10px; font-size:17px; font-weight:600;">0 วินาที</div>
+          <div style="position:absolute; left:206px; top:10px; font-size:17px; font-weight:600;">3 วินาที</div>
+          <div style="position:absolute; left:536px; top:10px; font-size:17px; font-weight:600;">10 วินาที</div>
+          <div style="position:absolute; left:0; top:112px; width:200px; font-size:15px; color:#64748b;">เริ่มกดค้าง</div>
+          <div style="position:absolute; left:206px; top:112px; width:320px; font-size:15px; color:#92400e;">LED กะพริบเร็ว เตือน ปล่อยมือ = ยกเลิก</div>
+          <div style="position:absolute; left:536px; top:112px; width:150px; font-size:15px; color:#991b1b;">LED ติดค้าง ล้างค่าและรีสตาร์ต</div>
+        </div>
+      </div>
+      <div style="display:flex; gap:16px; margin-top:16px;">
+        <div class="card" style="flex:1; padding:18px 20px; background:#fef2f2; border-color:#fecaca;"><div style="font-size:18px; font-weight:600; color:#991b1b;">ล้างค่า</div><div class="note" style="font-size:16px; margin-top:4px;">Wi-Fi ที่บันทึกไว้<br>ค่าสอบเทียบ และ kWh<br>ตำแหน่งและชื่อเซนเซอร์</div></div>
+        <div class="card" style="flex:1; padding:18px 20px; background:#f0fdf4; border-color:#bbf7d0;"><div style="font-size:18px; font-weight:600; color:#15803d;">เก็บไว้</div><div class="note" style="font-size:16px; margin-top:4px;">การตั้งค่า MQTT ทั้งหมด<br>(Broker, Token, หัวข้อ)<br>จึงกลับขึ้นแพลตฟอร์มได้ทันที</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= 3.10 CALIBRATION ================= -->
+<div class="fig" id="f310">
+  <div class="head">
+    <div class="eyebrow">การสอบเทียบ</div>
+    <div class="title">ขั้นตอนสอบเทียบค่าแรงดัน กระแส และกำลังไฟฟ้า</div>
+    <div class="sub">ค่าความคลาดเคลื่อนของหม้อแปลงและตัวต้านทานต่างกันในแต่ละบอร์ด จึงต้องสอบเทียบทุกเครื่อง</div>
+  </div>
+  <div style="display:flex; align-items:stretch; gap:0;">
+    <div class="card" style="width:330px;"><div class="num" style="background:#fff7ed; color:#c2410c;">1</div><h3 style="margin-top:16px;">ต่อโหลดคงที่</h3><div class="note" style="margin-top:8px;">ใช้โหลดแบบความต้านทาน เช่น ฮีตเตอร์ หรือหลอดไส้ หลีกเลี่ยงโหลดแบบสวิตชิ่ง</div></div>
+    <div style="width:52px; display:flex; align-items:center; justify-content:center;"><svg width="36" height="16" viewBox="0 0 36 16"><line x1="0" y1="8" x2="24" y2="8" stroke="#94a3b8" stroke-width="2.5"/><path d="M36 8 L22 1 L22 15 Z" fill="#94a3b8"/></svg></div>
+    <div class="card" style="width:330px;"><div class="num" style="background:#fff7ed; color:#c2410c;">2</div><h3 style="margin-top:16px;">วัดเทียบพร้อมกัน</h3><div class="note" style="margin-top:8px;">อ่านค่าจากเครื่องวัดมาตรฐาน เทียบกับค่าที่แสดงในแท็บ Calibration</div></div>
+    <div style="width:52px; display:flex; align-items:center; justify-content:center;"><svg width="36" height="16" viewBox="0 0 36 16"><line x1="0" y1="8" x2="24" y2="8" stroke="#94a3b8" stroke-width="2.5"/><path d="M36 8 L22 1 L22 15 Z" fill="#94a3b8"/></svg></div>
+    <div class="card" style="width:330px;"><div class="num" style="background:#fff7ed; color:#c2410c;">3</div><h3 style="margin-top:16px;">คำนวณตัวคูณ</h3><div class="note" style="margin-top:8px;">หาค่า k ของแรงดัน กระแส และกำลังไฟฟ้า ตามสูตรด้านล่าง</div></div>
+    <div style="width:52px; display:flex; align-items:center; justify-content:center;"><svg width="36" height="16" viewBox="0 0 36 16"><line x1="0" y1="8" x2="24" y2="8" stroke="#94a3b8" stroke-width="2.5"/><path d="M36 8 L22 1 L22 15 Z" fill="#94a3b8"/></svg></div>
+    <div class="card green" style="width:330px;"><div class="num" style="background:#ffffff; color:#15803d;">4</div><h3 style="margin-top:16px; color:#15803d;">บันทึก</h3><div class="note" style="margin-top:8px;">กรอก kV kI kP แล้วกดบันทึก ค่าเก็บใน NVS ใช้ได้ทันทีโดยไม่ต้องโปรแกรมใหม่</div></div>
+  </div>
+  <div style="display:flex; gap:24px; margin-top:28px;">
+    <div class="card" style="flex:1; padding:26px; background:#f8fafc; display:flex; flex-direction:column; justify-content:center; align-items:center;">
+      <div class="muted" style="font-size:17px;">สูตรตัวคูณสอบเทียบ</div>
+      <div style="font-size:34px; font-weight:600; margin-top:8px;">k = ค่าจากเครื่องวัดมาตรฐาน ÷ ค่าที่ระบบแสดง</div>
+    </div>
+    <div class="card" style="width:520px; padding:26px;">
+      <div class="muted" style="font-size:17px;">ตัวอย่างการคำนวณ (ค่าสมมติ)</div>
+      <div style="font-size:19px; margin-top:10px; line-height:1.8;">เครื่องวัดมาตรฐาน 228.0 V<br>ระบบแสดง 230.3 V<br><b>kV = 228.0 ÷ 230.3 = 0.990</b></div>
+    </div>
+  </div>
+  <div class="note" style="margin-top:16px; font-size:16px;">ความถี่ไม่ต้องสอบเทียบ เพราะคำนวณจากสัญญาณนาฬิกาภายในชิปโดยตรง</div>
+</div>
+
+</body>
+</html>
